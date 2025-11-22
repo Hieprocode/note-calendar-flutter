@@ -1,21 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:get/get.dart';
+
+// Import các file cấu hình và route
 import 'core/config/supabase_config.dart';
+import 'modules/routes/app_pages.dart';
+import 'modules/routes/app_routes.dart';
 
 void main() async {
+  // 1. Đảm bảo Flutter Binding được khởi tạo trước
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Khởi tạo Firebase
+  // 2. Khởi tạo Firebase
+  // (Nó sẽ tự đọc file google-services.json mà chúng ta đã cấu hình cực khổ lúc đầu)
   await Firebase.initializeApp();
 
-  // Khởi tạo Supabase
+  // 3. Khởi tạo Supabase
+  // (Lấy thông tin từ file Config cho gọn code)
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
 
+  // 4. Chạy App
   runApp(const MyApp());
 }
 
@@ -27,16 +35,24 @@ class MyApp extends StatelessWidget {
     return GetMaterialApp(
       title: 'Note Calendar',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(primarySwatch: Colors.blue),
-      home: const Scaffold(
-        body: Center(
-          child: Text(
-            'Note Calendar\nFirebase + Supabase\nĐã khởi tạo thành công!\nBây giờ code thôi!',
-            textAlign: TextAlign.center,
-            style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-          ),
-        ),
+      
+      // --- Cấu hình Theme (Màu sắc chủ đạo) ---
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
+        useMaterial3: true,
+        // Font chữ mặc định (cần cài google_fonts ở pubspec.yaml trước)
+        // fontFamily: GoogleFonts.inter().fontFamily, 
       ),
+
+      // --- Cấu hình Route (Quan trọng nhất) ---
+      // Màn hình đầu tiên khi mở app
+      initialRoute: AppRoutes.LOGIN, 
+      
+      // Danh sách tất cả màn hình đã định nghĩa bên AppPages
+      getPages: AppPages.pages,
+      
+      // (Tùy chọn) Binding khởi tạo các Controller dùng chung (như AuthController)
+      // initialBinding: InitialBinding(), 
     );
   }
 }
