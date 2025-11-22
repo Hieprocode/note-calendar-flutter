@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "478766196608",
+    "project_id": "note-304b6",
+    "storage_bucket": "note-304b6.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:478766196608:android:e656300650bc5b6642c365",
+        "android_client_info": {
+          "package_name": "com.notecalendar.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCm8BMbel0GIWbWp2ODioVaQQj_pxmBDQQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

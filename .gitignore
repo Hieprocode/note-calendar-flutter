@@ -1,0 +1,96 @@
+# -----------------------
+# MISCELLANEOUS (Rác hệ thống)
+# -----------------------
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# -----------------------
+# IDE & EDITOR (Cấu hình cá nhân)
+# -----------------------
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code (Nên chặn để tránh xung đột setting giữa các máy dev)
+.vscode/
+
+# -----------------------
+# FLUTTER / DART / PUB
+# -----------------------
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# -----------------------
+# SYMBOLICATION & OBFUSCATION
+# -----------------------
+app.*.symbols
+app.*.map.json
+
+# -----------------------
+# ANDROID RELATED
+# -----------------------
+/android/app/debug
+/android/app/profile
+/android/app/release
+/android/app/build
+/android/build
+/android/.gradle
+/android/local.properties
+
+# Key ký ứng dụng (Tuyệt đối không public file này nếu có)
+android/key.properties
+
+# Firebase Config Android
+# (Nếu team nhỏ/private repo thì CÓ THỂ commit file này để dev khác chạy luôn. 
+# Nếu muốn bảo mật tuyệt đối thì bỏ dấu # ở dòng dưới để chặn nó)
+# android/app/google-services.json
+
+# -----------------------
+# IOS RELATED
+# -----------------------
+/ios/Flutter/App.framework
+/ios/Flutter/Flutter.framework
+/ios/Flutter/Generated.xcconfig
+/ios/ServiceDefinitions.json
+/ios/Runner/GeneratedPluginRegistrant.*
+/ios/Pods/
+/ios/.symlinks/
+/ios/Profile/
+/ios/Release/
+
+# Firebase Config iOS
+# (Tương tự Android, để dòng này mở để team dễ làm việc)
+# ios/Runner/GoogleService-Info.plist
+
+# -----------------------
+# WEB RELATED
+# -----------------------
+lib/generated_plugin_registrant.dart
+
+# -----------------------
+# ENVIRONMENT VARIABLES (QUAN TRỌNG)
+# -----------------------
+# Chặn file chứa Key API nhạy cảm (nếu sau này dùng package flutter_dotenv)
+.env*
