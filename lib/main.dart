@@ -47,7 +47,7 @@ class MyApp extends StatelessWidget {
       initialBinding: InitialBinding(),
       // --- Cấu hình Route (Quan trọng nhất) ---
       // Màn hình đầu tiên khi mở app
-      initialRoute: AppRoutes.LOGIN, 
+      initialRoute: AppRoutes.SPLASH, 
       
       // Danh sách tất cả màn hình đã định nghĩa bên AppPages
       getPages: AppPages.pages,

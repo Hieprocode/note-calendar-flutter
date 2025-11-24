@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 
 class BaseController extends GetxController {
   // Chỉ dùng biến này để kiểm soát trạng thái
@@ -17,6 +18,21 @@ class BaseController extends GetxController {
     // Dùng rawSnackbar để an toàn hơn
     if (Get.context != null) {
       Get.rawSnackbar(message: "Lỗi: $error");
+    }
+  }
+
+void showSuccess(String msg) {
+    hideLoading();
+    if (Get.context != null) {
+      Get.rawSnackbar(
+        title: "Thành công",
+        message: msg,
+        backgroundColor: Colors.green,
+        icon: const Icon(Icons.check_circle, color: Colors.white),
+        snackPosition: SnackPosition.BOTTOM,
+        borderRadius: 10,
+        margin: const EdgeInsets.all(10),
+      );
     }
   }
 

@@ -5,8 +5,7 @@ import '../../data/repositories/auth_repository.dart';
 import '../../routes/app_routes.dart';
 
 class AuthController extends BaseController {
-  final AuthRepository _authRepo = AuthRepository();
-  
+  final AuthRepository _authRepo = Get.find<AuthRepository>();
   final phoneController = TextEditingController();
   final otpController = TextEditingController();
 

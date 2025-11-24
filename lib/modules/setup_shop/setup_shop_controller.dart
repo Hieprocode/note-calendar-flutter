@@ -10,8 +10,8 @@ import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 
 class SetupShopController extends BaseController {
-  final ShopRepository _shopRepo = ShopRepository();
-  final StorageService _storageService = StorageService();
+  final ShopRepository _shopRepo = Get.find<ShopRepository>();
+  final StorageService _storageService = Get.find<StorageService>();
 
   final nameController = TextEditingController();
   // THAY ĐỔI: Dùng Controller nhập tay thay vì biến chọn Dropdown
