@@ -7,7 +7,7 @@ import '../../core/base/base_controller.dart';
 import '../../data/models/shop_model.dart';
 import '../../data/repositories/shop_repository.dart';
 import '../../data/services/storage_service.dart';
-import '../routes/app_routes.dart';
+import '../../routes/app_routes.dart';
 
 class SetupShopController extends BaseController {
   final ShopRepository _shopRepo = ShopRepository();

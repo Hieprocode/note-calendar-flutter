@@ -5,8 +5,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import các file cấu hình và route
 import 'core/config/supabase_config.dart';
-import 'modules/routes/app_pages.dart';
-import 'modules/routes/app_routes.dart';
+import 'routes/app_pages.dart';
+import 'routes/app_routes.dart';
 
 void main() async {
   // 1. Đảm bảo Flutter Binding được khởi tạo trước

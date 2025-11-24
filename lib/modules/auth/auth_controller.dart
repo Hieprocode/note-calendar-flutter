@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/base/base_controller.dart';
 import '../../data/repositories/auth_repository.dart';
-import '../routes/app_routes.dart';
+import '../../routes/app_routes.dart';
 
 class AuthController extends BaseController {
   final AuthRepository _authRepo = AuthRepository();
