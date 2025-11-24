@@ -13,11 +13,12 @@ class CalendarView extends GetView<CalendarController> {
     return Scaffold(
       appBar: AppBar(title: const Text("Lịch Hẹn"), centerTitle: true),
       
-      // Nút thêm Booking (Để dành cho bước sau)
+      // Nút thêm Booking
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // TODO: Mở màn hình tạo Booking
-          Get.snackbar("Thông báo", "Tính năng tạo booking sẽ làm ở bước tiếp theo");
+          // --- ĐÃ SỬA: Dùng print thay vì Snackbar để tránh lỗi Overlay ---
+          print("--> Bấm nút thêm booking (Chức năng này làm ở bước sau)");
+          // Get.toNamed(AppRoutes.ADD_BOOKING); // Sau này sẽ mở dòng này
         },
         child: const Icon(Icons.add),
       ),
@@ -35,8 +36,17 @@ class CalendarView extends GetView<CalendarController> {
             onDaySelected: controller.onDaySelected,
             
             // Cấu hình giao diện
-            calendarFormat: CalendarFormat.week, // Mặc định hiện theo tuần cho gọn (có thể đổi thành month)
+            calendarFormat: CalendarFormat.week,
             startingDayOfWeek: StartingDayOfWeek.monday,
+            
+            // --- QUAN TRỌNG: THÊM DÒNG NÀY ĐỂ SỬA LỖI CRASH ---
+            // Chỉ cho phép hiện Tuần và Tháng, tắt nút "2 weeks" đi
+            availableCalendarFormats: const {
+              CalendarFormat.month: 'Tháng',
+              CalendarFormat.week: 'Tuần',
+            },
+            // --------------------------------------------------
+
             calendarStyle: const CalendarStyle(
               todayDecoration: BoxDecoration(color: Colors.blueAccent, shape: BoxShape.circle),
               selectedDecoration: BoxDecoration(color: Colors.orange, shape: BoxShape.circle),
@@ -54,7 +64,6 @@ class CalendarView extends GetView<CalendarController> {
           // 2. DANH SÁCH BOOKING CỦA NGÀY ĐƯỢC CHỌN
           Expanded(
             child: Obx(() {
-              // Lấy danh sách booking của ngày đang chọn
               final dailyBookings = controller.getBookingsForDay(controller.selectedDay.value);
 
               if (dailyBookings.isEmpty) {
@@ -115,7 +124,6 @@ class CalendarView extends GetView<CalendarController> {
     );
   }
 
-  // Helper chọn màu trạng thái
   Color _getStatusColor(String status) {
     switch (status) {
       case 'confirmed': return Colors.green;
