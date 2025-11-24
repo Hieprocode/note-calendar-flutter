@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 // Import các file cấu hình và route
 import 'core/config/supabase_config.dart';
+import 'core/base/initial_binding.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
 
@@ -43,7 +44,7 @@ class MyApp extends StatelessWidget {
         // Font chữ mặc định (cần cài google_fonts ở pubspec.yaml trước)
         // fontFamily: GoogleFonts.inter().fontFamily, 
       ),
-
+      initialBinding: InitialBinding(),
       // --- Cấu hình Route (Quan trọng nhất) ---
       // Màn hình đầu tiên khi mở app
       initialRoute: AppRoutes.LOGIN, 
