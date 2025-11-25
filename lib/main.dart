@@ -8,7 +8,7 @@ import 'core/config/supabase_config.dart';
 import 'core/base/initial_binding.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
-
+import 'package:intl/date_symbol_data_local.dart';
 void main() async {
   // 1. Đảm bảo Flutter Binding được khởi tạo trước
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +16,7 @@ void main() async {
   // 2. Khởi tạo Firebase
   // (Nó sẽ tự đọc file google-services.json mà chúng ta đã cấu hình cực khổ lúc đầu)
   await Firebase.initializeApp();
-
+  await initializeDateFormatting('vi', null);
   // 3. Khởi tạo Supabase
   // (Lấy thông tin từ file Config cho gọn code)
   await Supabase.initialize(

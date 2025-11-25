@@ -1,29 +1,19 @@
+// lib/data/models/booking_model.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class BookingModel {
   String? id;
-  String shopId;
-  
-  // Thông tin khách hàng (Lưu trực tiếp để đỡ phải join bảng)
-  String customerName;
-  String customerPhone;
-  
-  // Thông tin dịch vụ (Snapshot - Lưu cứng giá trị lúc đặt)
-  String serviceId;
-  String serviceName;
-  double servicePrice;
-  int durationMinutes;
-  
-  // Thời gian
-  DateTime startTime;
-  DateTime endTime;
-  
-  // Trạng thái & Nguồn
-  String status; // 'pending', 'confirmed', 'completed', 'cancelled', 'noshow'
-  String source; // 'manual' (chủ nhập), 'google_form' (khách đặt)
-  String? note;
-  
-  DateTime? createdAt;
+  final String shopId;
+  final String customerName;
+  final String customerPhone;
+  final String serviceId;
+  final String serviceName;
+  final double servicePrice;
+  final int durationMinutes;
+  final DateTime startTime;
+  final DateTime endTime;
+  final String status;
+  final String source;
 
   BookingModel({
     this.id,
@@ -36,35 +26,27 @@ class BookingModel {
     required this.durationMinutes,
     required this.startTime,
     required this.endTime,
-    this.status = 'confirmed', // Mặc định là đã xác nhận (nếu chủ nhập)
+    this.status = 'confirmed',
     this.source = 'manual',
-    this.note,
-    this.createdAt,
   });
 
-  // Chuyển từ JSON (Firestore) -> Object
   factory BookingModel.fromJson(Map<String, dynamic> json, String id) {
     return BookingModel(
       id: id,
       shopId: json['shop_id'] ?? '',
-      customerName: json['customer_name'] ?? 'Khách lẻ',
+      customerName: json['customer_name'] ?? '',
       customerPhone: json['customer_phone'] ?? '',
       serviceId: json['service_id'] ?? '',
       serviceName: json['service_name'] ?? '',
-      servicePrice: (json['service_price'] ?? 0).toDouble(),
+      servicePrice: (json['service_price'] as num?)?.toDouble() ?? 0.0,
       durationMinutes: json['duration'] ?? 30,
       startTime: (json['start_time'] as Timestamp).toDate(),
       endTime: (json['end_time'] as Timestamp).toDate(),
       status: json['status'] ?? 'pending',
       source: json['source'] ?? 'manual',
-      note: json['note'],
-      createdAt: json['created_at'] != null 
-          ? (json['created_at'] as Timestamp).toDate() 
-          : null,
     );
   }
 
-  // Chuyển từ Object -> JSON (Firestore)
   Map<String, dynamic> toJson() {
     return {
       'shop_id': shopId,
@@ -78,10 +60,37 @@ class BookingModel {
       'end_time': Timestamp.fromDate(endTime),
       'status': status,
       'source': source,
-      'note': note,
-      'created_at': createdAt != null 
-          ? Timestamp.fromDate(createdAt!) 
-          : FieldValue.serverTimestamp(), // Tự lấy giờ server
     };
+  }
+
+  /// HÀM QUAN TRỌNG: DÙNG ĐỂ TẠO BẢN SAO CÓ ID SAU KHI ADD
+  BookingModel copyWith({
+    String? id,
+    String? shopId,
+    String? customerName,
+    String? customerPhone,
+    String? serviceId,
+    String? serviceName,
+    double? servicePrice,
+    int? durationMinutes,
+    DateTime? startTime,
+    DateTime? endTime,
+    String? status,
+    String? source,
+  }) {
+    return BookingModel(
+      id: id ?? this.id,
+      shopId: shopId ?? this.shopId,
+      customerName: customerName ?? this.customerName,
+      customerPhone: customerPhone ?? this.customerPhone,
+      serviceId: serviceId ?? this.serviceId,
+      serviceName: serviceName ?? this.serviceName,
+      servicePrice: servicePrice ?? this.servicePrice,
+      durationMinutes: durationMinutes ?? this.durationMinutes,
+      startTime: startTime ?? this.startTime,
+      endTime: endTime ?? this.endTime,
+      status: status ?? this.status,
+      source: source ?? this.source,
+    );
   }
 }

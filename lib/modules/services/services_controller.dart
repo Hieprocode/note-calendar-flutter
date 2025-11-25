@@ -1,3 +1,4 @@
+// lib/modules/services/services_controller.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -6,106 +7,111 @@ import '../../data/models/service_model.dart';
 import '../../data/repositories/service_repository.dart';
 
 class ServicesController extends BaseController {
-  // Lấy ServiceRepo từ bộ nhớ (đã inject ở InitialBinding)
   final ServiceRepository _serviceRepo = Get.find<ServiceRepository>();
 
-  // Danh sách dịch vụ (Tự động cập nhật từ Firestore)
+  // Danh sách dịch vụ realtime
   var servicesList = <ServiceModel>[].obs;
 
-  // Các Controller nhập liệu
+  // Form
   final nameController = TextEditingController();
   final priceController = TextEditingController();
-  final durationController = TextEditingController(text: "30"); // Mặc định 30 phút
+  final durationController = TextEditingController(text: "30");
 
-  // --- LOGIC MỚI: CHỌN MÀU ---
-  
-  // Biến lưu màu đang chọn (Mặc định là Xanh dương)
-  var selectedColor = '0xFF2196F3'.obs; 
+  var selectedColor = '0xFF2196F3'.obs;
 
-  // Bảng màu (Palette) để hiện lên cho người dùng chọn
   final List<String> colorPalette = [
-    '0xFF2196F3', // Xanh dương (Mặc định)
-    '0xFFF44336', // Đỏ
-    '0xFFE91E63', // Hồng
-    '0xFF9C27B0', // Tím
-    '0xFF009688', // Xanh ngọc
-    '0xFF4CAF50', // Xanh lá
-    '0xFFFF9800', // Cam
-    '0xFF795548', // Nâu
-    '0xFF607D8B', // Xám xanh
-    '0xFF3F51B5', // Xanh đậm
+    '0xFF2196F3', '0xFFF44336', '0xFFE91E63', '0xFF9C27B0',
+    '0xFF009688', '0xFF4CAF50', '0xFFFF9800', '0xFF795548',
+    '0xFF607D8B', '0xFF3F51B5',
   ];
+
+  // Biến tạm để biết đang sửa dịch vụ nào
+  ServiceModel? _editingService;
 
   @override
   void onInit() {
     super.onInit();
-    // 1. Lấy UID người dùng hiện tại
-    String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
-    
-    // 2. Lắng nghe dữ liệu realtime (Bind Stream)
-    // Truyền uid vào để chỉ lấy dịch vụ của Shop này
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
     servicesList.bindStream(_serviceRepo.getServicesStream(uid));
   }
 
-  // Hàm Thêm Dịch Vụ
-  Future<void> addService() async {
-    String name = nameController.text.trim();
-    String priceStr = priceController.text.trim();
-    String durationStr = durationController.text.trim();
-
-    // Validate cơ bản
-    if (name.isEmpty) {
-      showError("Vui lòng nhập tên dịch vụ");
-      return;
-    }
-    if (priceStr.isEmpty) {
-      showError("Vui lòng nhập giá tiền");
-      return;
-    }
-
-    // Đóng Dialog trước khi xử lý
-    Get.back(); 
-    
-    // Ẩn bàn phím
-    FocusManager.instance.primaryFocus?.unfocus();
-
-    await safeCall(() async {
-      String uid = FirebaseAuth.instance.currentUser!.uid;
-      
-      // Tạo Model mới
-      ServiceModel newService = ServiceModel(
-        shopId: uid,
-        name: name,
-        price: double.tryParse(priceStr) ?? 0,
-        durationMinutes: int.tryParse(durationStr) ?? 30,
-        colorHex: selectedColor.value, // <--- LƯU MÀU ĐÃ CHỌN
-        isActive: true,
-      );
-
-      // Gửi sang Repo để lưu xuống Firestore
-      await _serviceRepo.createService(newService);
-      
-      // Reset Form về mặc định để nhập cái tiếp theo
-      nameController.clear();
-      priceController.clear();
-      durationController.text = "30";
-      selectedColor.value = '0xFF2196F3'; // Reset về màu xanh
-      
-      showSuccess("Đã thêm dịch vụ: $name");
-    });
+  // === CHUẨN BỊ SỬA ===
+  void prepareEdit(ServiceModel service) {
+    nameController.text = service.name;
+    priceController.text = service.price.toStringAsFixed(0);
+    durationController.text = service.durationMinutes.toString();
+    selectedColor.value = service.colorHex;
+    _editingService = service;
   }
 
-  // Hàm Xóa Dịch Vụ (Xóa mềm)
+  // === RESET FORM (public để View gọi được) ===
+  void resetForm() {
+    nameController.clear();
+    priceController.clear();
+    durationController.text = "30";
+    selectedColor.value = '0xFF2196F3';
+    _editingService = null;
+  }
+
+  // === HÀM LƯU CHUNG (THÊM + SỬA) – PUBLIC ===
+  Future<void> saveService({BuildContext? context}) async {
+  final name = nameController.text.trim();
+  final priceText = priceController.text.trim();
+  final durationText = durationController.text.trim();
+
+  if (name.isEmpty) {
+    showError("Vui lòng nhập tên dịch vụ");
+    return;
+  }
+  if (priceText.isEmpty || double.tryParse(priceText) == null) {
+    showError("Giá không hợp lệ");
+    return;
+  }
+
+  // ĐÓNG DIALOG NGAY – DÙNG NAVIGATOR
+  if (context != null) {
+    Navigator.of(context).pop();
+  } else if (Get.context != null) {
+    Navigator.of(Get.context!).pop();
+  }
+
+  FocusManager.instance.primaryFocus?.unfocus();
+
+  await safeCall(() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    final service = ServiceModel(
+      id: _editingService?.id,
+      shopId: uid,
+      name: name,
+      price: double.parse(priceText),
+      durationMinutes: int.tryParse(durationText) ?? 30,
+      colorHex: selectedColor.value,
+      isActive: true,
+    );
+
+    if (_editingService == null) {
+      await _serviceRepo.createService(service);
+      showSuccess("Đã thêm dịch vụ: $name");
+    } else {
+      await _serviceRepo.updateService(service);
+      showSuccess("Đã cập nhật dịch vụ: $name");
+    }
+
+    resetForm();
+  });
+}
+
+  // === XÓA DỊCH VỤ ===
   Future<void> deleteService(String id) async {
     await safeCall(() async {
       await _serviceRepo.deleteService(id);
       showSuccess("Đã xóa dịch vụ");
     });
   }
-  
+
   @override
   void onClose() {
-    // Giải phóng controller khi không dùng nữa
     nameController.dispose();
     priceController.dispose();
     durationController.dispose();
