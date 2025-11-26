@@ -42,4 +42,16 @@ class ServiceModel {
       'created_at': FieldValue.serverTimestamp(),
     };
   }
+@override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+  
+    return other is ServiceModel &&
+      other.id == id &&
+      other.shopId == shopId;
+  }
+
+  // 2. Ghi đè HashCode (Bắt buộc khi ghi đè ==)
+  @override
+  int get hashCode => id.hashCode ^ shopId.hashCode;
 }

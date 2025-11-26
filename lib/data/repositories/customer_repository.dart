@@ -4,6 +4,7 @@ import '../models/customer_model.dart';
 
 class CustomerRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String _collection = 'customers';
 
   // Tìm khách hàng bằng số điện thoại
   Future<CustomerModel?> findCustomerByPhone(String phone, String shopId) async {
@@ -32,5 +33,24 @@ class CustomerRepository {
       'total_bookings': FieldValue.increment(1),
       'last_booking_date': FieldValue.serverTimestamp(),
     });
+  }
+
+  Future<void> saveCustomer(CustomerModel customer) async {
+    await _firestore.collection(_collection).doc(customer.id).set(
+      customer.toJson(),
+      SetOptions(merge: true), // Merge để không mất dữ liệu cũ
+    );
+  }
+
+  // 3. Cộng dồn số lần đặt (Hàm bạn đang thiếu)
+  Future<void> incrementBookingCount(String customerId) async {
+    try {
+      await _firestore.collection(_collection).doc(customerId).update({
+        'total_bookings': FieldValue.increment(1),
+        'last_booking_date': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print("Lỗi cộng dồn khách: $e");
+    }
   }
 }

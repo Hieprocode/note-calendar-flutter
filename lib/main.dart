@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:intl/date_symbol_data_local.dart';
 
 // Import các file cấu hình và route
 import 'core/config/supabase_config.dart';
@@ -24,6 +25,7 @@ void main() async {
     anonKey: SupabaseConfig.anonKey,
   );
 
+  await initializeDateFormatting();
   // 4. Chạy App
   runApp(const MyApp());
 }

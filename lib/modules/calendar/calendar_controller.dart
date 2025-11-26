@@ -1,43 +1,99 @@
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'dart:async';
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/repositories/booking_repository.dart';
+import '../booking/booking_controller.dart';
 
 class CalendarController extends BaseController {
   final BookingRepository _bookingRepo = Get.find<BookingRepository>();
 
-  // Danh sách TẤT CẢ booking (Dữ liệu thô)
   var allBookings = <BookingModel>[].obs;
+  StreamSubscription? _bookingSubscription;
 
-  // Biến cho TableCalendar
   var focusedDay = DateTime.now().obs;
   var selectedDay = DateTime.now().obs;
 
   @override
   void onInit() {
     super.onInit();
+    _startListening();
+    ever(BookingController.triggerRefresh, (_) {
+      print("--> Calendar: Phát hiện thay đổi từ Booking → reconnect stream");
+      _bookingSubscription?.cancel();
+      _startListening(); // reconnect → nhận data mới nhất trong < 0.5s
+    });
+  
+  }
+
+  // void _startListening() {
+  //   String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+  //   _bookingSubscription?.cancel();
+    
+  //   // Nghe realtime
+  //   _bookingSubscription = _bookingRepo.getBookingsStream(uid).listen((data) {
+  //     allBookings.assignAll(data);
+  //     allBookings.refresh();
+  //     update(); // Cập nhật UI
+  //   });
+  // }
+
+  void _startListening() {
     String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
-    // Lắng nghe dữ liệu Realtime
-    allBookings.bindStream(_bookingRepo.getBookingsStream(uid));
+    if (uid.isEmpty) return;
+
+    print("--> CALENDAR: Đang kết nối Stream...");
+
+    // Hủy kết nối cũ nếu có (để tránh bị double)
+    _bookingSubscription?.cancel();
+
+    // Lắng nghe thủ công
+    _bookingSubscription = _bookingRepo.getBookingsStream(uid).listen((data) {
+      print("--> CALENDAR: Nhận được ${data.length} đơn (Có thay đổi!)");
+
+      allBookings.assignAll(data);
+      
+      allBookings.refresh();
+      
+      update(); 
+      
+    }, onError: (e) {
+      print("--> CALENDAR LỖI STREAM: $e");
+    });
   }
 
-  // Hàm khi người dùng bấm chọn ngày trên lịch
-  void onDaySelected(DateTime selected, DateTime focused) {
-    selectedDay.value = selected;
-    focusedDay.value = focused;
+  @override
+  void onClose() {
+    _bookingSubscription?.cancel();
+    super.onClose();
   }
 
-  // Hàm lọc booking theo ngày cụ thể (Để hiện list bên dưới lịch)
+  // Logic lọc ngày
   List<BookingModel> getBookingsForDay(DateTime day) {
-    return allBookings.where((booking) {
-      return isSameDay(booking.startTime, day);
-    }).toList();
+    return allBookings.where((b) => isSameDay(b.startTime, day)).toList();
   }
 
-  // Hàm tiện ích so sánh ngày (Bỏ qua giờ phút)
   bool isSameDay(DateTime? a, DateTime? b) {
     if (a == null || b == null) return false;
     return a.year == b.year && a.month == b.month && a.day == b.day;
+  }
+
+  void onDaySelected(DateTime selected, DateTime focused) {
+    selectedDay.value = selected;
+    focusedDay.value = focused;
+    update();
+  }
+  
+  // Logic đổi trạng thái nhanh
+  Future<void> updateStatus(String id, String status) async {
+    await _bookingRepo.updateStatus(id, status);
+    if (Get.isBottomSheetOpen == true) Get.back();
+  }
+  
+  // Logic xóa nhanh
+  Future<void> deleteBooking(String id) async {
+    await _bookingRepo.deleteBooking(id);
+    if (Get.isBottomSheetOpen == true) Get.back();
   }
 }
