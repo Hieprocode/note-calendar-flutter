@@ -2,9 +2,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
-import 'package:flutter_slidable/flutter_slidable.dart';
 import '../../data/models/service_model.dart';
 import 'services_controller.dart';
+import '../../core/widgets/app_slidable.dart'; // DÙNG CHUNG TOÀN APP
+    // DÙNG CHUNG TOÀN APP (nếu muốn)
 
 class ServicesView extends GetView<ServicesController> {
   const ServicesView({super.key});
@@ -19,7 +20,6 @@ class ServicesView extends GetView<ServicesController> {
         backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       ),
 
-      // Nút thêm mới nổi
       floatingActionButton: FloatingActionButton.extended(
         heroTag: "btn_add_service",
         onPressed: () => _showServiceDialog(),
@@ -29,10 +29,9 @@ class ServicesView extends GetView<ServicesController> {
         foregroundColor: Colors.white,
       ),
 
-            body: Obx(() {
+      body: Obx(() {
         final services = controller.servicesList;
 
-        // NẾU DANH SÁCH RỖNG → HIỆN MÀN HÌNH "CHƯA CÓ DỊCH VỤ"
         if (services.isEmpty) {
           return Center(
             child: Column(
@@ -40,21 +39,14 @@ class ServicesView extends GetView<ServicesController> {
               children: [
                 Icon(Icons.spa_outlined, size: 80, color: Colors.grey.shade300),
                 const SizedBox(height: 20),
-                const Text(
-                  "Chưa có dịch vụ nào",
-                  style: TextStyle(fontSize: 18, color: Colors.grey),
-                ),
+                const Text("Chưa có dịch vụ nào", style: TextStyle(fontSize: 18, color: Colors.grey)),
                 const SizedBox(height: 8),
-                const Text(
-                  "Bấm nút (+) để thêm dịch vụ đầu tiên",
-                  style: TextStyle(color: Colors.grey),
-                ),
+                const Text("Bấm nút (+) để thêm dịch vụ đầu tiên", style: TextStyle(color: Colors.grey)),
               ],
             ),
           );
         }
 
-        // NẾU CÓ DỮ LIỆU → HIỆN DANH SÁCH NGAY, KHÔNG CÓ VÒNG LOADING
         return ListView.builder(
           key: const ValueKey("services_list"),
           padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -64,93 +56,69 @@ class ServicesView extends GetView<ServicesController> {
             final color = _parseColor(service.colorHex);
             final letter = service.name.isNotEmpty ? service.name[0].toUpperCase() : "?";
 
-            return Padding(
-              key: ValueKey(service.id), // quan trọng: giúp Flutter biết item nào mới
-              padding: const EdgeInsets.only(bottom: 12),
-              child: Slidable(
-                key: ValueKey("slidable_${service.id}"),
-                endActionPane: ActionPane(
-                  motion: const StretchMotion(),
-                  extentRatio: 0.5,
-                  children: [
-                    SlidableAction(
-                      onPressed: (_) => _showServiceDialog(editingService: service),
-                      backgroundColor: Colors.blue,
-                      foregroundColor: Colors.white,
-                      icon: Icons.edit,
-                      label: 'Sửa',
-                      borderRadius: const BorderRadius.all(Radius.circular(16)),
-                    ),
-                    SlidableAction(
-                      onPressed: (_) => _confirmDelete(context, service.id!),
-                      backgroundColor: Colors.red,
-                      foregroundColor: Colors.white,
-                      icon: Icons.delete_outline,
-                      label: 'Xóa',
-                      borderRadius: const BorderRadius.all(Radius.circular(16)),
+            return AppSlidable(
+              itemId: service.id!,
+              onEdit: () => _showServiceDialog(editingService: service),
+              onDelete: (id) async {
+                await controller.deleteService(id);
+                // Nếu muốn snackbar xanh đẹp hơn thì dùng AppAlert
+                // AppAlert.success("Đã xóa dịch vụ");
+              },
+              child: Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.08),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                child: Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                        spreadRadius: 0,
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 26,
+                      backgroundColor: color.withOpacity(0.15),
+                      child: Text(
+                        letter,
+                        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 24),
                       ),
-                    ],
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 26,
-                        backgroundColor: color.withOpacity(0.15),
-                        child: Text(
-                          letter,
-                          style: TextStyle(
-                            color: color,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 24,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            service.name,
+                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
+                              const SizedBox(width: 4),
+                              Text("${service.durationMinutes} phút", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
+                              const SizedBox(width: 20),
+                              Icon(Icons.attach_money, size: 16, color: Colors.green[700]),
+                              const SizedBox(width: 4),
+                              Text(
+                                NumberFormat.currency(locale: 'vi', symbol: 'đ').format(service.price),
+                                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 14),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              service.name,
-                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 8),
-                            Row(
-                              children: [
-                                Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                                const SizedBox(width: 4),
-                                Text("${service.durationMinutes} phút", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                                const SizedBox(width: 20),
-                                Icon(Icons.attach_money, size: 16, color: Colors.green[700]),
-                                const SizedBox(width: 4),
-                                Text(
-                                  NumberFormat.currency(locale: 'vi', symbol: 'đ').format(service.price),
-                                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 14),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Icon(Icons.arrow_back_ios_new_rounded, color: Colors.grey[400], size: 22),
-                    ],
-                  ),
+                    ),
+                    Icon(Icons.arrow_back_ios_new_rounded, color: Colors.grey[400], size: 22),
+                  ],
                 ),
               ),
             );
@@ -160,7 +128,6 @@ class ServicesView extends GetView<ServicesController> {
     );
   }
 
-  // Parse màu từ hex string
   Color _parseColor(String hex) {
     try {
       return Color(int.parse(hex));
@@ -169,7 +136,6 @@ class ServicesView extends GetView<ServicesController> {
     }
   }
 
-  // DIALOG THÊM / SỬA DỊCH VỤ
   void _showServiceDialog({ServiceModel? editingService}) {
     if (editingService != null) {
       controller.prepareEdit(editingService);
@@ -292,29 +258,6 @@ class ServicesView extends GetView<ServicesController> {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
             ),
             child: Text(editingService == null ? "Thêm mới" : "Cập nhật", style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // XÁC NHẬN XÓA
-  void _confirmDelete(BuildContext context, String id) {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: const Text("Xóa dịch vụ?", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
-        content: const Text("Dịch vụ sẽ bị ẩn vĩnh viễn và không thể khôi phục."),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Hủy")),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pop(context);
-              controller.deleteService(id);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text("Xóa", style: TextStyle(color: Colors.white)),
           ),
         ],
       ),
