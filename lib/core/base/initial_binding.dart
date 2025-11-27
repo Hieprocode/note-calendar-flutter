@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:note_calendar/data/repositories/customer_repository.dart';
 import '../../data/repositories/shop_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/services/storage_service.dart';
@@ -16,5 +17,7 @@ class InitialBinding extends Bindings {
     Get.put(ServiceRepository(), permanent: true);
 
     Get.put(BookingRepository(), permanent: true);
+
+    Get.put(CustomerRepository(), permanent: true);
   }
 }
