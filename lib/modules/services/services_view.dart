@@ -29,14 +29,11 @@ class ServicesView extends GetView<ServicesController> {
         foregroundColor: Colors.white,
       ),
 
-      body: Obx(() {
-        // Loading
-        if (controller.isLoading.value) {
-          return const Center(child: CircularProgressIndicator());
-        }
+            body: Obx(() {
+        final services = controller.servicesList;
 
-        // Trống
-        if (controller.servicesList.isEmpty) {
+        // NẾU DANH SÁCH RỖNG → HIỆN MÀN HÌNH "CHƯA CÓ DỊCH VỤ"
+        if (services.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -57,19 +54,21 @@ class ServicesView extends GetView<ServicesController> {
           );
         }
 
-        // Danh sách dịch vụ
+        // NẾU CÓ DỮ LIỆU → HIỆN DANH SÁCH NGAY, KHÔNG CÓ VÒNG LOADING
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100), // tránh bị FAB che
-          itemCount: controller.servicesList.length,
+          key: const ValueKey("services_list"),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: services.length,
           itemBuilder: (context, index) {
-            final service = controller.servicesList[index];
+            final service = services[index];
             final color = _parseColor(service.colorHex);
             final letter = service.name.isNotEmpty ? service.name[0].toUpperCase() : "?";
 
             return Padding(
+              key: ValueKey(service.id), // quan trọng: giúp Flutter biết item nào mới
               padding: const EdgeInsets.only(bottom: 12),
               child: Slidable(
-                // Vuốt sang trái → hiện nút Sửa + Xóa
+                key: ValueKey("slidable_${service.id}"),
                 endActionPane: ActionPane(
                   motion: const StretchMotion(),
                   extentRatio: 0.5,
@@ -92,8 +91,6 @@ class ServicesView extends GetView<ServicesController> {
                     ),
                   ],
                 ),
-
-                // CARD CHÍNH – SIÊU ĐẸP
                 child: Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
@@ -110,7 +107,6 @@ class ServicesView extends GetView<ServicesController> {
                   ),
                   child: Row(
                     children: [
-                      // Avatar có màu
                       CircleAvatar(
                         radius: 26,
                         backgroundColor: color.withOpacity(0.15),
@@ -123,20 +119,14 @@ class ServicesView extends GetView<ServicesController> {
                           ),
                         ),
                       ),
-
                       const SizedBox(width: 16),
-
-                      // Nội dung chính (tự co giãn)
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               service.name,
-                              style: const TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -145,33 +135,20 @@ class ServicesView extends GetView<ServicesController> {
                               children: [
                                 Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
                                 const SizedBox(width: 4),
-                                Text(
-                                  "${service.durationMinutes} phút",
-                                  style: TextStyle(color: Colors.grey[700], fontSize: 13),
-                                ),
+                                Text("${service.durationMinutes} phút", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
                                 const SizedBox(width: 20),
                                 Icon(Icons.attach_money, size: 16, color: Colors.green[700]),
                                 const SizedBox(width: 4),
                                 Text(
                                   NumberFormat.currency(locale: 'vi', symbol: 'đ').format(service.price),
-                                  style: const TextStyle(
-                                    color: Colors.green,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 14,
-                                  ),
+                                  style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 14),
                                 ),
                               ],
                             ),
                           ],
                         ),
                       ),
-
-                      // Gợi ý có thể vuốt
-                      Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        color: Colors.grey[400],
-                        size: 22,
-                      ),
+                      Icon(Icons.arrow_back_ios_new_rounded, color: Colors.grey[400], size: 22),
                     ],
                   ),
                 ),

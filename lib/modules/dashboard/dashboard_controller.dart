@@ -6,6 +6,7 @@ import '../../data/models/shop_model.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/repositories/shop_repository.dart';
 import '../../data/repositories/booking_repository.dart';
+import '../booking/booking_controller.dart';
 
 class DashboardController extends BaseController {
   final ShopRepository _shopRepo = Get.find<ShopRepository>();
@@ -26,6 +27,11 @@ class DashboardController extends BaseController {
     print("--> DASHBOARD: onInit (Khởi tạo)");
     fetchShopProfile();
     _startListeningStats();
+    debounce(BookingController.triggerRefresh, (_) {
+    print("--> DASHBOARD: Reconnect stream sau thay đổi booking");
+    _statsSubscription?.cancel();
+    _startListeningStats();
+  }, time: const Duration(milliseconds: 600));
   }
 
   // Gọi lại khi Tab Dashboard được chọn (để chắc chắn Stream còn sống)

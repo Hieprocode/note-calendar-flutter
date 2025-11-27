@@ -7,6 +7,8 @@ import 'package:intl/intl.dart';
 import '../../routes/app_routes.dart';
 import 'calendar_controller.dart';
 import '../../data/models/booking_model.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
+
 
 // IMPORT QUAN TRỌNG: Lấy View từ module Booking sang để dùng
 import '../booking/view/booking_detail_view.dart'; 
@@ -120,82 +122,154 @@ class CalendarView extends GetView<CalendarController> {
 
   // THẺ BOOKING
   Widget _buildBookingCard(BookingModel b) {
-    return Card(
-      elevation: 3,
-      margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        // Bấm vào -> Hiện chi tiết (BookingDetailView)
-        onTap: () {
-          Get.bottomSheet(
-            BookingDetailView(booking: b), // <--- Gọi Widget từ module Booking
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-          );
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(
-            children: [
-              // Cột thời gian
-              Container(
-                width: 70,
-                padding: const EdgeInsets.symmetric(vertical: 8),
-                decoration: BoxDecoration(
-                  color: Colors.blue.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: Colors.blue.shade100),
-                ),
-                child: Column(
-                  children: [
-                    Text(DateFormat('HH:mm').format(b.startTime), style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.blue, fontSize: 14)),
-                    Container(height: 1, width: 20, color: Colors.blue.shade200, margin: const EdgeInsets.symmetric(vertical: 2)),
-                    Text(DateFormat('HH:mm').format(b.endTime), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade700, fontSize: 13)),
-                  ],
-                ),
-              ),
+  final color = _getStatusColor(b.status);
 
-              const SizedBox(width: 12),
+  return Padding(
+    padding: const EdgeInsets.only(bottom: 12),
+    child: Slidable(
+      key: ValueKey(b.id),
+      endActionPane: ActionPane(
+        motion: const StretchMotion(),
+        extentRatio: 0.5,
+        children: [
+          // NÚT SỬA
+          SlidableAction(
+            onPressed: (_) {
+              Get.back(); // đóng detail nếu đang mở
+              Get.find<BookingController>().fillDataForEdit(b);
+              Get.bottomSheet(
+                const AddBookingView(),
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+              );
+            },
+            backgroundColor: Colors.blue,
+            foregroundColor: Colors.white,
+            icon: Icons.edit,
+            label: 'Sửa',
+            borderRadius: const BorderRadius.all(Radius.circular(16)),
+          ),
+          // NÚT XÓA
+          SlidableAction(
+            onPressed: (_) => _confirmDeleteBooking(b.id!),
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            icon: Icons.delete_outline,
+            label: 'Xóa',
+            borderRadius: const BorderRadius.all(Radius.circular(16)),
+          ),
+        ],
+      ),
 
-              // Thông tin
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(b.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16), maxLines: 1, overflow: TextOverflow.ellipsis),
-                    const SizedBox(height: 4),
-                    Text(b.serviceName, style: TextStyle(color: Colors.grey[800], fontSize: 14)),
-                    const SizedBox(height: 4),
-                    Text(
-                      NumberFormat.currency(locale: 'vi', symbol: 'đ').format(b.servicePrice),
-                      style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 13),
-                    ),
-                  ],
+      // CARD CHÍNH – GIỮ NGUYÊN ĐẸP NHƯ CŨ
+      child: Card(
+        elevation: 3,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () {
+            Get.bottomSheet(
+              BookingDetailView(booking: b),
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                // Cột thời gian
+                Container(
+                  width: 70,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.blue.shade50,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.blue.shade100),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        DateFormat('HH:mm').format(b.startTime),
+                        style: const TextStyle(fontWeight: FontWeight.w900, color: Colors.blue, fontSize: 15),
+                      ),
+                      Container(height: 1, width: 24, color: Colors.blue.shade200, margin: const EdgeInsets.symmetric(vertical: 4)),
+                      Text(
+                        DateFormat('HH:mm').format(b.endTime),
+                        style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue.shade700, fontSize: 13),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
 
-              // Trạng thái
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: _getStatusColor(b.status).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: _getStatusColor(b.status)),
+                const SizedBox(width: 14),
+
+                // Thông tin chính
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(b.customerName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                      const SizedBox(height: 4),
+                      Text(b.serviceName, style: TextStyle(color: Colors.grey[800], fontSize: 14)),
+                      const SizedBox(height: 4),
+                      Text(
+                        NumberFormat.currency(locale: 'vi', symbol: 'đ').format(b.servicePrice),
+                        style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ],
+                  ),
                 ),
-                child: Text(
-                  b.status == 'confirmed' ? 'OK' : 
-                  b.status == 'completed' ? 'Xong' : 
-                  b.status == 'cancelled' ? 'Hủy' : b.status,
-                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: _getStatusColor(b.status)),
+
+                // Trạng thái
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: color.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: color),
+                  ),
+                  child: Text(
+                    b.status == 'confirmed' ? 'OK' :
+                    b.status == 'completed' ? 'Xong' :
+                    b.status == 'cancelled' ? 'Hủy' : b.status,
+                    style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
+void _confirmDeleteBooking(String id) {
+  Get.dialog(
+    AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      title: const Text("Xóa lịch hẹn?", style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+      content: const Text("Lịch hẹn này sẽ bị xóa vĩnh viễn và không thể khôi phục."),
+      actions: [
+        TextButton(onPressed: () => Get.back(), child: const Text("Hủy")),
+        ElevatedButton(
+          onPressed: () {
+            Get.back();
+            controller.deleteBooking(id); // dùng hàm có sẵn trong CalendarController
+            Get.rawSnackbar(
+              message: "Đã xóa lịch hẹn",
+              backgroundColor: Colors.red,
+            );
+          },
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+          child: const Text("Xóa", style: TextStyle(color: Colors.white)),
+        ),
+      ],
+    ),
+  );
+}
 
   Color _getStatusColor(String status) {
     switch (status) {

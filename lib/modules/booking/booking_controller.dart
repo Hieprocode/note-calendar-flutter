@@ -265,12 +265,8 @@ Future<void> saveBooking() async {
         
         Get.rawSnackbar(message: "✅ Đã thêm mới thành công!", backgroundColor: Colors.green);
       }
-
-      // --- CẬP NHẬT & ĐÓNG ---
-      // Kích hoạt biến này để CalendarController biết mà load lại (nếu cần)
       BookingController.triggerRefresh.value++; 
 
-      // Đóng Bottom Sheet (Chỉ gọi 1 lần duy nhất ở đây cho cả 2 trường hợp)
       Get.back(); 
     });
   }

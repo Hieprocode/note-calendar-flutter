@@ -95,5 +95,6 @@ class CalendarController extends BaseController {
   Future<void> deleteBooking(String id) async {
     await _bookingRepo.deleteBooking(id);
     if (Get.isBottomSheetOpen == true) Get.back();
+    BookingController.triggerRefresh.value++;
   }
 }
