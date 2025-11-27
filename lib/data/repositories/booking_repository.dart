@@ -42,4 +42,16 @@ class BookingRepository {
   Future<void> deleteBooking(String bookingId) async {
     await _firestore.collection(_collection).doc(bookingId).delete();
   }
+
+  Stream<List<BookingModel>> getBookingsByCustomer(String shopId, String phone) {
+    return _firestore
+        .collection(_collection)
+        .where('shop_id', isEqualTo: shopId)
+        .where('customer_phone', isEqualTo: phone)
+        .orderBy('start_time', descending: true) // Đơn mới nhất lên đầu
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => BookingModel.fromJson(doc.data(), doc.id))
+            .toList());
+  }
 }

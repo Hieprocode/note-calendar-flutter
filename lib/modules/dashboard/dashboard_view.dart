@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'dashboard_controller.dart';
+import '../../routes/app_routes.dart';
 
 // Import các màn hình con
 import '../services/services_view.dart';
@@ -135,15 +136,7 @@ class DashboardView extends GetView<DashboardController> {
 
                 // NÚT 2: DS KHÁCH (Chưa làm -> Hiện thông báo)
                 _buildActionButton(Icons.list, "DS Khách", Colors.purple, () {
-                   Get.snackbar(
-                     "Thông báo", 
-                     "Tính năng Quản lý Khách hàng sẽ có trong bản cập nhật sau",
-                     snackPosition: SnackPosition.BOTTOM,
-                     backgroundColor: Colors.black87,
-                     colorText: Colors.white,
-                     margin: const EdgeInsets.all(10),
-                     borderRadius: 10,
-                   );
+                   Get.toNamed(AppRoutes.CUSTOMERS);
                 }),
 
                 // NÚT 3: THÔNG BÁO (Chưa làm -> Hiện thông báo)

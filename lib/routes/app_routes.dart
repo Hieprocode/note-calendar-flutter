@@ -5,4 +5,7 @@ class AppRoutes {
   static const DASHBOARD = '/dashboard';
   static const CALENDAR = '/calendar';
   static const ADD_BOOKING = '/add-booking';
+  static const SERVICES = '/services';
+  static const CUSTOMERS = '/customers';
+  static const SETTINGS = '/settings';
 }

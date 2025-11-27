@@ -19,6 +19,8 @@ import '../modules/dashboard/dashboard_binding.dart';
 import '../modules/booking/view/add_booking_view.dart'; // <--- Import cái này
 import '../modules/booking/booking_binding.dart';
 
+import '../modules/customers/customer_view.dart';
+import '../modules/customers/customer_binding.dart';
 class AppPages {
   static final pages = [
     GetPage(
@@ -57,5 +59,11 @@ class AppPages {
       page: () => const AddBookingView(), // <--- Phải gọi AddBookingView
       binding: BookingBinding(),
     ),
+
+    GetPage(
+      name: AppRoutes.CUSTOMERS,
+      page: () => const CustomerView(),
+      binding: CustomerBinding(),
+),
   ];
 }
