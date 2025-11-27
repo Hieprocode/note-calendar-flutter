@@ -77,34 +77,40 @@ class DashboardController extends BaseController {
   }
 
   void _calculateStats(List<BookingModel> bookings) {
-    final now = DateTime.now();
-    
-    // Lọc đơn HÔM NAY
-    final todayList = bookings.where((b) {
-      return b.startTime.year == now.year &&
-             b.startTime.month == now.month &&
-             b.startTime.day == now.day;
-    }).toList();
+  final now = DateTime.now();
 
-    int count = 0;
-    double revenue = 0;
+  // Lọc đơn HÔM NAY
+  final todayList = bookings.where((b) {
+    return b.startTime.year == now.year &&
+          b.startTime.month == now.month &&
+          b.startTime.day == now.day;
+  }).toList();
 
-    for (var b in todayList) {
-      if (b.status != 'cancelled') {
-        count++;
-        revenue += b.servicePrice;
-      }
+  int count = 0;
+  double revenue = 0;
+
+  for (var b in todayList) {
+    // Chỉ tính những đơn không bị hủy
+    if (b.status == 'cancelled') continue;
+
+    // Tất cả đơn không hủy đều được tính là 1 khách
+    count++;
+
+    // CHỈ đơn "confirmed" mới được tính doanh thu
+    if (b.status == 'completed') {
+      revenue += b.servicePrice;
     }
-
-    todayBookingCount.value = count;
-    todayRevenue.value = revenue;
-    
-    // Refresh biến Rx để chắc chắn UI vẽ lại
-    todayRevenue.refresh();
-    todayBookingCount.refresh();
-    
-    print("--> DASHBOARD CẬP NHẬT: $count khách - $revenue VNĐ");
   }
+
+  todayBookingCount.value = count;
+  todayRevenue.value = revenue;
+
+  // Refresh để UI cập nhật ngay
+  todayBookingCount.refresh();
+  todayRevenue.refresh();
+
+  print("--> DASHBOARD CẬP NHẬT: $count khách - ${revenue.toStringAsFixed(0)} VNĐ");
+}
 
   @override
   void onClose() {
