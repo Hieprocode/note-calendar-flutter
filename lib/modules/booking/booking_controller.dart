@@ -256,8 +256,6 @@ Future<void> saveBooking() async {
     // REALTIME TOÀN APP
     BookingController.triggerRefresh.value++;
 
-    // ĐÓNG + THÔNG BÁO
-    Get.back();
     Get.rawSnackbar(
       message: isEditMode.value ? "Cập nhật thành công!" : "Đã thêm lịch hẹn!",
       backgroundColor: Colors.green,
@@ -272,7 +270,10 @@ Future<void> saveBooking() async {
       resetFormForAdd();
     }
   });
+    Get.back();
+
 }
+
   @override
   void onClose() {
     phoneController.dispose();
