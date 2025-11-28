@@ -1,5 +1,7 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:note_calendar/data/repositories/customer_repository.dart';
 import 'dart:async';
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
@@ -114,10 +116,40 @@ class CalendarController extends BaseController {
     }
   }
   
-  // Logic xóa nhanh
   Future<void> deleteBooking(String id) async {
+  try {
+    // 1. LẤY BOOKING TRƯỚC KHI XÓA ĐỂ LẤY SỐ ĐIỆN THOẠI KHÁCH
+    final bookingSnapshot = await _bookingRepo.getBookingById(id);
+    if (bookingSnapshot == null) {
+      Get.snackbar("Lỗi", "Không tìm thấy lịch hẹn");
+      return;
+    }
+
+    final customerPhone = bookingSnapshot.customerPhone;
+
+    // 2. XÓA BOOKING TRÊN FIRESTORE
     await _bookingRepo.deleteBooking(id);
-    if (Get.isBottomSheetOpen == true) Get.back();
+
+    // 3. GIẢM totalBookings CỦA KHÁCH (QUAN TRỌNG NHẤT!)
+    if (customerPhone.isNotEmpty) {
+      await Get.find<CustomerRepository>().decrementBookingCount(customerPhone);
+    }
+    // 4. REALTIME TOÀN APP
     BookingController.triggerRefresh.value++;
+
+    // 5. ĐÓNG BOTTOM SHEET + THÔNG BÁO
+    if (Get.isBottomSheetOpen == true) Get.back();
+
+    Get.rawSnackbar(
+      message: "Đã xóa lịch hẹn thành công!",
+      backgroundColor: Colors.red,
+      snackPosition: SnackPosition.TOP,
+      margin:  EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 2),
+    );
+  } catch (e) {
+    Get.snackbar("Lỗi", "Không thể xóa lịch hẹn", backgroundColor: Colors.red);
   }
+}
 }

@@ -50,6 +50,17 @@ class CustomerRepository {
     }
   }
 
+Future<void> decrementBookingCount(String phone) async {
+  final docRef = _firestore
+      .collection('customers')
+      .doc(phone); // vì bạn dùng phone làm id
+
+  await docRef.update({
+    'total_bookings': FieldValue.increment(-1),
+    'last_booking_date': FieldValue.serverTimestamp(), // tùy chọn
+  });
+}
+
   // 4. LẤY DANH SÁCH (Stream - Realtime) -> Dùng cho màn hình Quản lý Khách
   Stream<List<CustomerModel>> getCustomersStream(String shopId) {
     return _firestore

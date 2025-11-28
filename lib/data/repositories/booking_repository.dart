@@ -20,8 +20,8 @@ class BookingRepository {
   }
 
   // 2. THÊM MỚI (Đã sửa tên từ addBooking -> createBooking)
-  Future<void> createBooking(BookingModel booking) async {
-    return await _firestore.collection(_collection).add(booking.toJson());
+  Future<void> createBooking(BookingModel booking)  {
+    return  _firestore.collection(_collection).add(booking.toJson());
   }
 
   // 3. Cập nhật trạng thái
@@ -54,4 +54,17 @@ class BookingRepository {
             .map((doc) => BookingModel.fromJson(doc.data(), doc.id))
             .toList());
   }
+
+  Future<BookingModel?> getBookingById(String id) async {
+  try {
+    final doc = await _firestore.collection('bookings').doc(id).get();
+    if (doc.exists) {
+      return BookingModel.fromJson(doc.data()!, doc.id);
+    }
+    return null;
+  } catch (e) {
+    print("Lỗi lấy booking: $e");
+    return null;
+  }
+}
 }

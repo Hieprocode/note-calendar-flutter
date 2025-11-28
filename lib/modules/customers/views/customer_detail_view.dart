@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:note_calendar/modules/booking/booking_controller.dart';
 import '../../../data/models/customer_model.dart';
 import '../../../data/models/booking_model.dart';
 import '../../../data/repositories/booking_repository.dart';
@@ -121,59 +122,63 @@ class CustomerDetailView extends StatelessWidget {
 
           // DANH SÁCH LỊCH SỬ
           Expanded(
-            child: StreamBuilder<List<BookingModel>>(
-              stream: bookingRepo.getBookingsByCustomer(uid, customer.phone),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return const Center(child: Text("Lỗi tải dữ liệu", style: TextStyle(color: Colors.red)));
-                }
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+  child: Obx(() {
+    BookingController.triggerRefresh.value;
 
-                final bookings = snapshot.data!;
-                if (bookings.isEmpty) {
-                  return const Center(child: Text("Chưa có lịch hẹn nào", style: TextStyle(color: Colors.grey)));
-                }
+    return StreamBuilder<List<BookingModel>>(
+      stream: bookingRepo.getBookingsByCustomer(uid, customer.phone),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text("Lỗi tải dữ liệu", style: TextStyle(color: Colors.red)));
+        }
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: bookings.length,
-                  itemBuilder: (context, index) {
-                    final b = bookings[index];
-                    return Card(
-                      elevation: 2,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: b.status == 'completed' ? Colors.green.shade100 : Colors.orange.shade100,
-                          child: Icon(
-                            b.status == 'completed' ? Icons.check : Icons.access_time,
-                            color: b.status == 'completed' ? Colors.green : Colors.orange,
-                          ),
-                        ),
-                        title: Text(b.serviceName, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(b.startTime)),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              NumberFormat.currency(locale: 'vi', symbol: 'đ').format(b.servicePrice),
-                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
-                            ),
-                            Text(
-                              b.status == 'completed' ? "Hoàn thành" : "Đã đặt",
-                              style: TextStyle(fontSize: 11, color: b.status == 'completed' ? Colors.green : Colors.orange),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
-            ),
-          ),
+        final bookings = snapshot.data!;
+        if (bookings.isEmpty) {
+          return const Center(child: Text("Chưa có lịch hẹn nào", style: TextStyle(color: Colors.grey)));
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          itemCount: bookings.length,
+          itemBuilder: (context, index) {
+            final b = bookings[index];
+            return Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              child: ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: b.status == 'completed' ? Colors.green.shade100 : Colors.orange.shade100,
+                  child: Icon(
+                    b.status == 'completed' ? Icons.check : Icons.access_time,
+                    color: b.status == 'completed' ? Colors.green : Colors.orange,
+                  ),
+                ),
+                title: Text(b.serviceName, style: const TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: Text(DateFormat('dd/MM/yyyy HH:mm').format(b.startTime)),
+                trailing: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      NumberFormat.currency(locale: 'vi', symbol: 'đ').format(b.servicePrice),
+                      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                    ),
+                    Text(
+                      b.status == 'completed' ? "Hoàn thành" : "Đã đặt",
+                      style: TextStyle(fontSize: 11, color: b.status == 'completed' ? Colors.green : Colors.orange),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }),
+),
         ],
       ),
     );

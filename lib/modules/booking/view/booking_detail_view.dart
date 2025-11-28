@@ -95,19 +95,19 @@ class BookingDetailContent extends StatelessWidget {
 
                       const SizedBox(height: 32),
 
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            Navigator.pop(context);
-                            Get.find<BookingController>().fillDataForEdit(updatedBooking);
-                            Get.bottomSheet(const AddBookingView(), isScrollControlled: true, backgroundColor: Colors.transparent);
-                          },
-                          icon: const Icon(Icons.edit_outlined),
-                          label: const Text("Chỉnh sửa thông tin"),
-                          style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.blue), foregroundColor: Colors.blue),
-                        ),
-                      ),
+                      // SizedBox(
+                      //   width: double.infinity,
+                      //   child: OutlinedButton.icon(
+                      //     onPressed: () {
+                      //       Navigator.pop(context);
+                      //       Get.find<BookingController>().fillDataForEdit(updatedBooking);
+                      //       Get.bottomSheet(const AddBookingView(), isScrollControlled: true, backgroundColor: Colors.transparent);
+                      //     },
+                      //     icon: const Icon(Icons.edit_outlined),
+                      //     label: const Text("Chỉnh sửa thông tin"),
+                      //     style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), side: const BorderSide(color: Colors.blue), foregroundColor: Colors.blue),
+                      //   ),
+                      // ),
 
                       const SizedBox(height: 16),
 
