@@ -1,5 +1,6 @@
 // lib/modules/booking/booking_controller.dart
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/base/base_controller.dart';
@@ -193,84 +194,85 @@ class BookingController extends BaseController {
 // }
 
 Future<void> saveBooking() async {
-    if (nameController.text.isEmpty || selectedService.value == null) {
-      print("Thiếu thông tin"); // Hoặc hiện snackbar báo lỗi
-      return;
-    }
-
-    await safeCall(() async {
-      String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
-      if (uid.isEmpty) return;
-
-      final start = _getDateTime(selectedDate.value, selectedTime.value);
-      final end = _getDateTime(selectedDate.value, endTime.value);
-
-      BookingModel booking = BookingModel(
-        id: editingId,
-        shopId: uid,
-        customerName: nameController.text,
-        customerPhone: phoneController.text,
-        serviceId: selectedService.value!.id!,
-        serviceName: selectedService.value!.name,
-        servicePrice: selectedService.value!.price,
-        durationMinutes: selectedService.value!.durationMinutes,
-        startTime: start,
-        endTime: end,
-        status: 'confirmed',
-        source: 'manual',
-        note: noteController.text,
-        paymentMethod: paymentMethod.value,
-        paymentStatus: paymentStatus.value,
-      );
-
-      if (isEditMode.value) {
-        // --- CHẾ ĐỘ SỬA ---
-        await _bookingRepo.updateBooking(booking);
-        
-        // Đóng bảng TRƯỚC
-        Get.back(); 
-        
-        // Chờ 300ms cho Overlay ổn định rồi mới hiện thông báo (Fix lỗi Crash)
-        Future.delayed(const Duration(milliseconds: 300), () {
-           if (Get.context != null) { // Kiểm tra context còn sống không
-             Get.rawSnackbar(
-               message: "✅ Đã cập nhật thành công!", 
-               backgroundColor: Colors.green
-             );
-           }
-        });
-      } else {
-        // --- CHẾ ĐỘ TẠO MỚI ---
-        await _bookingRepo.createBooking(booking);
-        
-        // Lưu khách
-        CustomerModel customer = CustomerModel(
-          id: "${uid}_${phoneController.text.trim()}",
-          shopId: uid,
-          name: nameController.text,
-          phone: phoneController.text,
-          totalBookings: 1,
-        );
-        // Chạy song song cho nhanh
-        Future.wait([
-          _customerRepo.saveCustomer(customer),
-          _customerRepo.incrementBookingCount(customer.id)
-        ]);
-
-        // Reset form (để lần sau mở lên nó sạch sẽ)
-        nameController.clear();
-        phoneController.clear();
-        noteController.clear();
-        selectedService.value = null;
-        
-        Get.rawSnackbar(message: "✅ Đã thêm mới thành công!", backgroundColor: Colors.green);
-      }
-      BookingController.triggerRefresh.value++; 
-
-      Get.back(); 
-    });
+  if (nameController.text.trim().isEmpty || selectedService.value == null) {
+    Get.snackbar("Lỗi", "Vui lòng nhập tên và chọn dịch vụ",
+        backgroundColor: Colors.redAccent, colorText: Colors.white);
+    return;
   }
 
+  await safeCall(() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+    if (uid.isEmpty) return;
+
+    final phone = phoneController.text.trim();
+    final start = _getDateTime(selectedDate.value, selectedTime.value);
+    final end = _getDateTime(selectedDate.value, endTime.value);
+
+    // TÌM KHÁCH CŨ TRONG FIRESTORE
+    final existingCustomer = await _customerRepo.findCustomerByPhone(phone, uid);
+
+    BookingModel booking = BookingModel(
+      id: editingId,
+      shopId: uid,
+      customerName: nameController.text.trim(),
+      customerPhone: phone,
+      serviceId: selectedService.value!.id!,
+      serviceName: selectedService.value!.name,
+      servicePrice: selectedService.value!.price,
+      durationMinutes: selectedService.value!.durationMinutes,
+      startTime: start,
+      endTime: end,
+      status: 'confirmed',
+      source: 'manual',
+      note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
+      paymentMethod: paymentMethod.value,
+      paymentStatus: paymentStatus.value,
+    );
+
+    if (isEditMode.value) {
+      // CHỈ SỬA LỊCH – KHÔNG ĐỘNG VÀO KHÁCH
+      await _bookingRepo.updateBooking(booking);
+    } else {
+      // TẠO MỚI LỊCH
+      await _bookingRepo.createBooking(booking);
+
+      if (existingCustomer != null) {
+        // KHÁCH CŨ → CHỈ TĂNG totalBookings (dùng hàm có sẵn)
+        await _customerRepo.incrementBookingCount(phone);
+      } else {
+        // KHÁCH MỚI → TẠO MỚI VỚI totalBookings = 1
+        final newCustomer = CustomerModel(
+          id: phone,
+          shopId: uid,
+          name: nameController.text.trim(),
+          phone: phone,
+          totalBookings: 1,
+          isBadGuest: false,
+        );
+        await _customerRepo.saveCustomer(newCustomer);
+      }
+    }
+
+    // REALTIME TOÀN APP
+    BookingController.triggerRefresh.value++;
+
+    // ĐÓNG + THÔNG BÁO
+    Get.back();
+    Get.rawSnackbar(
+      message: isEditMode.value ? "Cập nhật thành công!" : "Đã thêm lịch hẹn!",
+      backgroundColor: Colors.green,
+      snackPosition: SnackPosition.TOP,
+      margin: const EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 2),
+    );
+
+    // Reset form nếu tạo mới
+    if (!isEditMode.value) {
+      resetFormForAdd();
+    }
+  });
+}
   @override
   void onClose() {
     phoneController.dispose();

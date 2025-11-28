@@ -62,7 +62,17 @@ class AddBookingView extends StatelessWidget {
                 const SizedBox(height: 15),
 
                 // Dịch vụ
-                Obx(() => DropdownButtonFormField<ServiceModel>(
+                Obx(() {
+                final services = controller.servicesList;
+                final currentSelected = controller.selectedService.value;
+                final isServiceDeleted = currentSelected != null && 
+                !services.any((s) => s.id == currentSelected.id);
+                if (isServiceDeleted) {
+                controller.selectedService.value = null;
+                }
+    
+                return DropdownButtonFormField<ServiceModel>(
+                  
                   value: controller.selectedService.value,
                   hint: const Text("Chọn dịch vụ *"),
                   decoration: const InputDecoration(
@@ -74,7 +84,8 @@ class AddBookingView extends StatelessWidget {
                     child: Text("${s.name} (${s.durationMinutes}p)"),
                   )).toList(),
                   onChanged: (val) => controller.selectService(val!),
-                )),
+                );
+  }),
 
                 const SizedBox(height: 20),
 

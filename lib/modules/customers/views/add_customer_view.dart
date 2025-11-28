@@ -91,19 +91,20 @@ class AddCustomerView extends StatelessWidget {
                       const SizedBox(height: 20),
 
                       // NÚT "BÙNG KÈO" – HOẠT ĐỘNG HOÀN HẢO
-                      GetBuilder<CustomerController>(
-                        builder: (ctrl) => SwitchListTile(
-                          contentPadding: EdgeInsets.zero,
-                          title: const Text(
-                            "Đánh dấu khách bùng kèo",
-                            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
-                          ),
-                          subtitle: const Text("Sẽ hiển thị cảnh báo đỏ ở mọi nơi"),
-                          value: ctrl.isBadGuest.value,
-                          activeColor: Colors.red,
-                          onChanged: (val) => ctrl.isBadGuest.value = val,
-                        ),
+                     // DÙNG Obx THAY GetBuilder → THEO DÕI .value TỰ ĐỘNG, KHÔNG CẦN update()!
+                    Obx(() => SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text(
+                        "Đánh dấu khách bùng kèo",
+                        style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
+                      subtitle: const Text("Sẽ hiển thị cảnh báo đỏ ở mọi nơi"),
+                      value: controller.isBadGuest.value,
+                      activeColor: Colors.red,
+                      onChanged: (val) {
+                        controller.isBadGuest.value = val; // TỰ ĐỘNG REBUILD NGAY!
+                      },
+                    )),
 
                       const SizedBox(height: 30),
 

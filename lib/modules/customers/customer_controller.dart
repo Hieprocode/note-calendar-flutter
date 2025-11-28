@@ -1,14 +1,17 @@
 // lib/modules/customers/customer_controller.dart
 import 'package:flutter/material.dart';
-import 'package:get/get.dart';
+import 'package:get/Get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:collection/collection.dart'; // THÊM DÒNG NÀY ĐỂ DÙNG firstWhereOrNull
 import '../../core/base/base_controller.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/repositories/customer_repository.dart';
-import '../booking/booking_controller.dart';
 
 class CustomerController extends BaseController {
   final CustomerRepository _customerRepo = Get.find<CustomerRepository>();
+
+  // BIẾN REALTIME RIÊNG CHO CUSTOMER – ĐÃ SỬA ĐÚNG TÊN!
+  final triggerRefresh = 0.obs;
 
   var filteredCustomers = <CustomerModel>[].obs;
   var allCustomers = <CustomerModel>[].obs;
@@ -27,25 +30,27 @@ class CustomerController extends BaseController {
     final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
     if (uid.isEmpty) return;
 
+    // Lắng nghe realtime từ Firestore
     _customerRepo.getCustomersStream(uid).listen((data) {
       allCustomers.assignAll(data);
-      filterCustomers(); // GỌI HÀM MỚI
+      filterCustomers();
     });
 
-    searchController.addListener(filterCustomers); // GỌI HÀM MỚI
+    // Tìm kiếm realtime
+    searchController.addListener(filterCustomers);
   }
 
-  // HÀM MỚI – GIẢI QUYẾT LỖI 100%
   void filterCustomers() {
     final query = searchController.text.toLowerCase();
     if (query.isEmpty) {
       filteredCustomers.assignAll(allCustomers);
     } else {
-      final result = allCustomers.where((c) =>
-        c.name.toLowerCase().contains(query) ||
-        c.phone.contains(query)
-      ).toList();
-      filteredCustomers.assignAll(result);
+      filteredCustomers.assignAll(
+        allCustomers.where((c) =>
+          c.name.toLowerCase().contains(query) ||
+          c.phone.contains(query)
+        ).toList(),
+      );
     }
   }
 
@@ -75,7 +80,10 @@ class CustomerController extends BaseController {
     try {
       final uid = FirebaseAuth.instance.currentUser!.uid;
       final phone = phoneController.text.trim();
-      final docId = editingId ?? "${uid}_$phone";
+      final docId = editingId ?? phone; // dùng phone làm id
+
+      // Tìm khách cũ để lấy totalBookings
+      final existingCustomer = allCustomers.firstWhereOrNull((c) => c.phone == phone);
 
       final customer = CustomerModel(
         id: docId,
@@ -84,11 +92,14 @@ class CustomerController extends BaseController {
         phone: phone,
         note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
         isBadGuest: isBadGuest.value,
-        totalBookings: editingId != null
-            ? (allCustomers.firstWhereOrNull((c) => c.id == editingId)?.totalBookings ?? 0)
-            : 0,
+        totalBookings: (existingCustomer?.totalBookings ?? 0) + (editingId == null ? 1 : 0),
+        lastBookingDate: DateTime.now(),
       );
+
       await _customerRepo.saveCustomer(customer);
+
+      // REALTIME CHO CUSTOMER VIEW
+      triggerRefresh.value++;
       Get.rawSnackbar(
         message: editingId == null ? "Đã thêm khách hàng!" : "Cập nhật thành công!",
         backgroundColor: Colors.green,
@@ -107,8 +118,18 @@ class CustomerController extends BaseController {
   Future<bool> deleteCustomer(String id) async {
     try {
       await _customerRepo.deleteCustomer(id);
-      Get.rawSnackbar(message: "Đã xóa khách hàng!", backgroundColor: Colors.red,
-          snackPosition: SnackPosition.TOP, margin: const EdgeInsets.all(16), borderRadius: 12);
+
+      // REALTIME CHO CUSTOMER VIEW
+      triggerRefresh.value++;
+
+      Get.rawSnackbar(
+        message: "Đã xóa khách hàng!",
+        backgroundColor: Colors.red,
+        snackPosition: SnackPosition.TOP,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 2),
+      );
       return true;
     } catch (e) {
       Get.snackbar("Lỗi", "Không thể xóa", backgroundColor: Colors.red);

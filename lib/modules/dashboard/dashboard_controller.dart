@@ -92,6 +92,9 @@ class DashboardController extends BaseController {
     for (var b in todayList) {
       if (b.status != 'cancelled') {
         count++;
+       
+      }
+      if(b.status == 'completed'){
         revenue += b.servicePrice;
       }
     }
