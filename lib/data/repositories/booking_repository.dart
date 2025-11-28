@@ -21,7 +21,7 @@ class BookingRepository {
 
   // 2. THÊM MỚI (Đã sửa tên từ addBooking -> createBooking)
   Future<void> createBooking(BookingModel booking) async {
-    await _firestore.collection(_collection).add(booking.toJson());
+    return await _firestore.collection(_collection).add(booking.toJson());
   }
 
   // 3. Cập nhật trạng thái

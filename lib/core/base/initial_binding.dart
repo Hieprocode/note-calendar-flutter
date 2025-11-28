@@ -5,6 +5,8 @@ import '../../data/repositories/auth_repository.dart';
 import '../../data/services/storage_service.dart';
 import '../../data/repositories/service_repository.dart';
 import '../../data/repositories/booking_repository.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/services/notification_service.dart';
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
@@ -19,5 +21,9 @@ class InitialBinding extends Bindings {
     Get.put(BookingRepository(), permanent: true);
 
     Get.put(CustomerRepository(), permanent: true);
+
+    Get.put(NotificationRepository(), permanent: true);
+
+    Get.put(NotificationService(), permanent: true);
   }
 }

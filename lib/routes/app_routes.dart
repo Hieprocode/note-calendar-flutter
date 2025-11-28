@@ -8,4 +8,5 @@ class AppRoutes {
   static const SERVICES = '/services';
   static const CUSTOMERS = '/customers';
   static const SETTINGS = '/settings';
+  static const NOTIFICATIONS = '/notifications';
 }

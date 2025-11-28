@@ -10,9 +10,13 @@ import '../../data/models/service_model.dart';
 import '../../data/repositories/booking_repository.dart';
 import '../../data/repositories/customer_repository.dart';
 import '../../data/repositories/service_repository.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/models/notification_model.dart';
+import '../../data/services/notification_service.dart';
 
 class BookingController extends BaseController {
   // Repos
+  final NotificationRepository _notiRepo = Get.find<NotificationRepository>();
   final BookingRepository _bookingRepo = Get.find<BookingRepository>();
   final CustomerRepository _customerRepo = Get.find<CustomerRepository>();
   final ServiceRepository _serviceRepo = Get.find<ServiceRepository>();
@@ -35,6 +39,7 @@ class BookingController extends BaseController {
   var paymentMethod = 'cash'.obs;
   var paymentStatus = 'unpaid'.obs;
   static final triggerRefresh = 0.obs;
+  final NotificationService _notiService = Get.find<NotificationService>();
   @override
   void onInit() {
     super.onInit();
@@ -201,78 +206,98 @@ Future<void> saveBooking() async {
   }
 
   await safeCall(() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
-    if (uid.isEmpty) return;
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+      if (uid.isEmpty) return;
 
-    final phone = phoneController.text.trim();
-    final start = _getDateTime(selectedDate.value, selectedTime.value);
-    final end = _getDateTime(selectedDate.value, endTime.value);
+      final phone = phoneController.text.trim();
+      final start = _getDateTime(selectedDate.value, selectedTime.value);
+      final end = _getDateTime(selectedDate.value, endTime.value);
 
-    // TÌM KHÁCH CŨ TRONG FIRESTORE
-    final existingCustomer = await _customerRepo.findCustomerByPhone(phone, uid);
+      // TÌM KHÁCH CŨ
+      final existingCustomer = await _customerRepo.findCustomerByPhone(phone, uid);
 
-    BookingModel booking = BookingModel(
-      id: editingId,
-      shopId: uid,
-      customerName: nameController.text.trim(),
-      customerPhone: phone,
-      serviceId: selectedService.value!.id!,
-      serviceName: selectedService.value!.name,
-      servicePrice: selectedService.value!.price,
-      durationMinutes: selectedService.value!.durationMinutes,
-      startTime: start,
-      endTime: end,
-      status: 'confirmed',
-      source: 'manual',
-      note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
-      paymentMethod: paymentMethod.value,
-      paymentStatus: paymentStatus.value,
-    );
+      BookingModel booking = BookingModel(
+        id: editingId,
+        shopId: uid,
+        customerName: nameController.text.trim(),
+        customerPhone: phone,
+        serviceId: selectedService.value!.id!,
+        serviceName: selectedService.value!.name,
+        servicePrice: selectedService.value!.price,
+        durationMinutes: selectedService.value!.durationMinutes,
+        startTime: start,
+        endTime: end,
+        status: 'confirmed',
+        source: 'manual',
+        note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
+        paymentMethod: paymentMethod.value,
+        paymentStatus: paymentStatus.value,
+      );
 
-    if (isEditMode.value) {
-      // CHỈ SỬA LỊCH – KHÔNG ĐỘNG VÀO KHÁCH
-      await _bookingRepo.updateBooking(booking);
-    } else {
-      // TẠO MỚI LỊCH
-      await _bookingRepo.createBooking(booking);
-
-      if (existingCustomer != null) {
-        // KHÁCH CŨ → CHỈ TĂNG totalBookings (dùng hàm có sẵn)
-        await _customerRepo.incrementBookingCount(phone);
+      if (isEditMode.value) {
+        // CHỈ SỬA LỊCH
+        await _bookingRepo.updateBooking(booking);
       } else {
-        // KHÁCH MỚI → TẠO MỚI VỚI totalBookings = 1
-        final newCustomer = CustomerModel(
-          id: phone,
-          shopId: uid,
-          name: nameController.text.trim(),
-          phone: phone,
-          totalBookings: 1,
-          isBadGuest: false,
-        );
-        await _customerRepo.saveCustomer(newCustomer);
+        // TẠO MỚI LỊCH
+        await _bookingRepo.createBooking(booking);
+
+        if (existingCustomer != null) {
+          // KHÁCH CŨ -> Update dùng ID thật
+          await _customerRepo.incrementBookingCount(existingCustomer.id);
+        } else {
+          // KHÁCH MỚI -> Tạo mới (Dùng ID Unique: uid_phone)
+          final newCustomer = CustomerModel(
+            id: "${uid}_$phone", // <--- CHỖ NÀY SỬA LẠI CHO AN TOÀN
+            shopId: uid,
+            name: nameController.text.trim(),
+            phone: phone,
+            totalBookings: 1,
+            isBadGuest: false,
+          );
+          await _customerRepo.saveCustomer(newCustomer);
+        }
+
+        // TẠO THÔNG BÁO
+        try {
+          NotificationModel noti = NotificationModel(
+            shopId: uid,
+            title: "Lịch hẹn mới",
+            body: "${nameController.text} - ${selectedService.value?.name} lúc ${selectedTime.value.format(Get.context!)}",
+            type: "new_booking",
+            isRead: false,
+            createdAt: DateTime.now(),
+          );
+          await _notiRepo.createNotification(noti);
+        } catch (e) {
+          print("Lỗi tạo noti: $e");
+        }
       }
-    }
 
-    // REALTIME TOÀN APP
-    BookingController.triggerRefresh.value++;
+      // --- KẾT THÚC QUY TRÌNH ---
+      
+      // 1. Kích hoạt cập nhật UI (nếu Calendar lắng nghe biến này)
+      BookingController.triggerRefresh.value++;
 
-    // ĐÓNG + THÔNG BÁO
+      // 2. Đóng màn hình
+      
+      
+      // 3. Hiện thông báo thành công
+      Get.rawSnackbar(
+        message: isEditMode.value ? "Cập nhật thành công!" : "Đã thêm lịch hẹn!",
+        backgroundColor: Colors.green,
+        snackPosition: SnackPosition.TOP,
+        margin: const EdgeInsets.all(16),
+        borderRadius: 12,
+        duration: const Duration(seconds: 2),
+      );
+
+      // 4. Reset form nếu tạo mới
+      if (!isEditMode.value) {
+        resetFormForAdd();
+      }
+    });
     Get.back();
-    Get.rawSnackbar(
-      message: isEditMode.value ? "Cập nhật thành công!" : "Đã thêm lịch hẹn!",
-      backgroundColor: Colors.green,
-      snackPosition: SnackPosition.TOP,
-      margin: const EdgeInsets.all(16),
-      borderRadius: 12,
-      duration: const Duration(seconds: 2),
-    );
-
-    // Reset form nếu tạo mới
-    if (!isEditMode.value) {
-      resetFormForAdd();
     }
-  });
-}
   @override
   void onClose() {
     phoneController.dispose();

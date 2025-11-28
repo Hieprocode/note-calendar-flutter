@@ -5,10 +5,12 @@ import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/repositories/booking_repository.dart';
 import '../booking/booking_controller.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/models/notification_model.dart';
 
 class CalendarController extends BaseController {
   final BookingRepository _bookingRepo = Get.find<BookingRepository>();
-
+  final NotificationRepository _notiRepo = Get.find<NotificationRepository>();
   var allBookings = <BookingModel>[].obs;
   StreamSubscription? _bookingSubscription;
 
@@ -86,9 +88,30 @@ class CalendarController extends BaseController {
   }
   
   // Logic đổi trạng thái nhanh
-  Future<void> updateStatus(String id, String status) async {
-    await _bookingRepo.updateStatus(id, status);
-    if (Get.isBottomSheetOpen == true) Get.back();
+ Future<void> updateStatus(String id, String status) async {
+    try {
+      await _bookingRepo.updateStatus(id, status);
+      
+      // ---> THÊM ĐOẠN NÀY: Ghi log thông báo
+      String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+      // Tìm booking hiện tại để lấy tên khách
+      var booking = allBookings.firstWhereOrNull((b) => b.id == id);
+      String clientName = booking?.customerName ?? "Khách hàng";
+
+      NotificationModel noti = NotificationModel(
+        shopId: uid,
+        title: "Cập nhật trạng thái",
+        body: "Đơn của $clientName đã: $status",
+        type: status == 'cancelled' ? 'cancel_booking' : 'completed',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+      _notiRepo.createNotification(noti);
+
+      if (Get.isBottomSheetOpen == true) Get.back();
+    } catch (e) {
+      print("Lỗi update: $e");
+    }
   }
   
   // Logic xóa nhanh

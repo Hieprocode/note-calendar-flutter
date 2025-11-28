@@ -141,15 +141,7 @@ class DashboardView extends GetView<DashboardController> {
 
                 // NÚT 3: THÔNG BÁO (Chưa làm -> Hiện thông báo)
                 _buildActionButton(Icons.notifications, "Thông báo", Colors.red, () {
-                   Get.snackbar(
-                     "Thông báo", 
-                     "Tính năng Thông báo sẽ có trong bản cập nhật sau",
-                     snackPosition: SnackPosition.BOTTOM,
-                     backgroundColor: Colors.black87,
-                     colorText: Colors.white,
-                     margin: const EdgeInsets.all(10),
-                     borderRadius: 10,
-                   );
+                   Get.toNamed(AppRoutes.NOTIFICATIONS);
                 }),
               ],
             ),

@@ -21,6 +21,9 @@ import '../modules/booking/booking_binding.dart';
 
 import '../modules/customers/customer_view.dart';
 import '../modules/customers/customer_binding.dart';
+
+import '../modules/notifications/notification_view.dart';
+import '../modules/notifications/notification_binding.dart';
 class AppPages {
   static final pages = [
     GetPage(
@@ -65,5 +68,10 @@ class AppPages {
       page: () => const CustomerView(),
       binding: CustomerBinding(),
 ),
+    GetPage(
+          name: AppRoutes.NOTIFICATIONS,
+          page: () => const NotificationView(),
+          binding: NotificationBinding(),
+        ),
   ];
 }
