@@ -26,4 +26,6 @@ class StorageService {
       throw Exception("Lỗi Upload ảnh: $e");
     }
   }
+
+  Future<dynamic> init() async {}
 }

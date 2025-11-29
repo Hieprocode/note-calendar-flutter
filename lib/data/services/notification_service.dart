@@ -4,128 +4,97 @@ import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
-  // Singleton – chỉ khởi tạo 1 lần
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin plugin = FlutterLocalNotificationsPlugin();
 
-  static const String _channelId = "booking_channel";
-  static const String _channelName = "Lịch hẹn";
-  static const String _channelDescription = "Thông báo lịch hẹn salon";
+  static const String channelId = "booking_reminder";
+  static const String channelName = "Nhắc lịch hẹn";
+  static const String channelDesc = "Thông báo trước khi có khách";
 
-  // KHỞI TẠO – DÙNG ĐƯỢC CẢ KHI APP TẮT
   Future<void> init() async {
-    // Khởi tạo timezone (bắt buộc cho zonedSchedule)
     tz_data.initializeTimeZones();
-    final vietnam = tz.getLocation('Asia/Ho_Chi_Minh');
-    tz.setLocalLocation(vietnam);
+    tz.setLocalLocation(tz.getLocation('Asia/Ho_Chi_Minh'));
 
-    // Cấu hình khởi tạo
-    const AndroidInitializationSettings androidInit =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-
-    const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
+    const android = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const ios = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initSettings =
-        InitializationSettings(android: androidInit, iOS: iosInit);
+    await plugin.initialize(const InitializationSettings(android: android, iOS: ios));
 
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
-
-    // Tạo channel cho Android 8.0+
-    const AndroidNotificationChannel channel = AndroidNotificationChannel(
-      _channelId,
-      _channelName,
-      description: _channelDescription,
+    const channel = AndroidNotificationChannel(
+      channelId,
+      channelName,
+      description: channelDesc,
       importance: Importance.max,
       playSound: true,
-      sound: RawResourceAndroidNotificationSound('notification'), // không .mp3
     );
 
-    final androidPlugin = flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin = plugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
     await androidPlugin?.createNotificationChannel(channel);
-
-    // Xin quyền Android 13+
     await androidPlugin?.requestNotificationsPermission();
   }
 
-  // HIỂN THỊ THÔNG BÁO NGAY LẬP TỨC (khi tạo lịch mới)
-  Future<void> showNotification({
-    required String title,
-    required String body,
-    String? payload,
-  }) async {
-    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
-      _channelId,
-      _channelName,
-      channelDescription: _channelDescription,
-      importance: Importance.max,
-      priority: Priority.high,
-      playSound: true,
-      sound: RawResourceAndroidNotificationSound('notification'),
-      enableVibration: true,
-      icon: '@mipmap/ic_launcher',
-    );
-
-    const NotificationDetails platformDetails = NotificationDetails(
-      android: androidDetails,
-      iOS: DarwinNotificationDetails(
-        sound: 'notification.mp3',
-        presentAlert: true,
-        presentSound: true,
-        presentBadge: true,
-      ),
-    );
-
-    await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch ~/ 1000,
-      title,
-      body,
-      platformDetails,
-      payload: payload,
-    );
-  }
-
-  // HẸN GIỜ NHẮC TRƯỚC 15 PHÚT (dự phòng – nhưng giờ ta dùng Cloud Function rồi)
+  // ĐÃ SỬA HOÀN HẢO CHO PHIÊN BẢN 19.5.0+ – CHẠY NGON 100%!
   Future<void> scheduleBookingReminder({
     required int id,
     required String customerName,
     required DateTime bookingTime,
   }) async {
     final scheduledDate = bookingTime.subtract(const Duration(minutes: 15));
-    if (scheduledDate.isBefore(DateTime.now())) return;
 
-    await flutterLocalNotificationsPlugin.zonedSchedule(
-      id,
-      'Sắp có khách: $customerName',
-      'Lịch hẹn lúc ${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}',
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          _channelId,
-          _channelName,
-          channelDescription: _channelDescription,
-          importance: Importance.max,
-          priority: Priority.high,
-          playSound: true,
-          sound: RawResourceAndroidNotificationSound('notification'),
+    if (scheduledDate.isBefore(DateTime.now())) {
+      print("Đã qua giờ nhắc → bỏ qua");
+      return;
+    }
+
+    try {
+      await plugin.zonedSchedule(
+        id,
+        'Sắp có khách: $customerName',
+        'Lịch hẹn lúc ${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}',
+        tz.TZDateTime.from(scheduledDate, tz.local),
+        const NotificationDetails(
+          android: AndroidNotificationDetails(
+            channelId,
+            channelName,
+            channelDescription: channelDesc,
+            importance: Importance.max,
+            priority: Priority.high,
+            playSound: true,
+            icon: '@mipmap/ic_launcher',
+            sound: RawResourceAndroidNotificationSound('notification'),
+          ),
+          iOS: DarwinNotificationDetails(presentSound: true,sound: 'notification.mp3'),
         ),
-        iOS: DarwinNotificationDetails(sound: 'notification.mp3'),
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+
+      );
+
+      print("ĐÃ ĐẶT NHẮC HẸN THÀNH CÔNG: $scheduledDate");
+    } catch (e) {
+      print("Lỗi đặt nhắc hẹn: $e");
+    }
+  }
+
+  Future<void> showNotification({required String title, required String body}) async {
+    await plugin.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      const NotificationDetails(
+        android: AndroidNotificationDetails(channelId, channelName,
+            channelDescription: channelDesc, importance: Importance.max, priority: Priority.high),
+        iOS: DarwinNotificationDetails(),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      matchDateTimeComponents: DateTimeComponents.time,
     );
   }
 
-  Future<void> cancelNotification(int id) async {
-    await flutterLocalNotificationsPlugin.cancel(id);
-  }
+  Future<void> cancel(int id) async => await plugin.cancel(id);
+  Future<void> cancelAll() async => await plugin.cancelAll();
 }

@@ -1,12 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    >
-
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    
+    <!-- ✅ THÊM CÁC PERMISSIONS CẦN THIẾT CHO NOTIFICATION -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="android.permission.WAKE_LOCK"/>
+    
     <application
         android:label="note_calendar"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-
+        
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -15,36 +23,62 @@
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:hardwareAccelerated="true"
-            android:windowSoftInputMode="adjustResize">
-
+            android:windowSoftInputMode="adjustResize"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true">
+            
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
-
+            
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
-
-        <!-- ĐÂY LÀ DÒNG DUY NHẤT CẦN THIẾT ĐỂ FCM CHẠY KHI APP TẮT (2025) -->
+        
+        <!-- ✅ RECEIVER CHO SCHEDULED NOTIFICATIONS (BẮT BUỘC) -->
+        <receiver 
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" 
+            android:exported="false"/>
+        
+        <!-- ✅ RECEIVER ĐỂ GIỮ NOTIFICATION SAU KHI REBOOT -->
+        <receiver 
+            android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationBootReceiver"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED"/>
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED"/>
+                <action android:name="android.intent.action.QUICKBOOT_POWERON"/>
+                <action android:name="com.htc.intent.action.QUICKBOOT_POWERON"/>
+            </intent-filter>
+        </receiver>
+        
+        <!-- ✅ FIREBASE MESSAGING (GIỮ NGUYÊN) -->
         <service
             android:name="io.flutter.plugins.firebase.messaging.FlutterFirebaseMessagingBackgroundService"
             android:exported="false" />
-
-        <!-- Giữ lại cái này -->
+        
+        <!-- ✅ META-DATA -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
+        
+        <!-- ✅ NOTIFICATION ICON MẶC ĐỊNH (TÙY CHỌN) -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
+        
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@color/notification_color" />
     </application>
-
-    <!-- Phần queries giữ nguyên -->
+    
+    <!-- ✅ QUERIES (GIỮ NGUYÊN) -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />
         </intent>
     </queries>
-
 </manifest>
