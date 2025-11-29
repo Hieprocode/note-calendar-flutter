@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/models/customer_model.dart';
@@ -271,6 +272,15 @@ Future<void> saveBooking() async {
         } catch (e) {
           print("Lỗi tạo noti: $e");
         }
+        await _notiService.scheduleBookingReminder(
+          id: booking.hashCode,
+          customerName: booking.customerName,
+          bookingTime: booking.startTime,
+        );
+        await NotificationService().showNotification(
+        title: "Có khách đặt lịch mới!",
+        body: "${nameController.text.trim()} • ${selectedService.value!.name} • ${DateFormat('HH:mm').format(start)}",
+      );
       }
 
       // --- KẾT THÚC QUY TRÌNH ---
@@ -298,6 +308,63 @@ Future<void> saveBooking() async {
     });
     Get.back();
     }
+    Future<void> changeBookingStatus(String bookingId, String newStatus) async {
+    try {
+      // 1. Cập nhật status lên Firestore
+      await _bookingRepo.updateStatus(bookingId, newStatus);
+
+      // 2. Lấy thông tin booking để tạo thông báo đẹp
+      final booking = await _bookingRepo.getBookingById(bookingId);
+      if (booking == null) return;
+
+      final customerName = booking.customerName;
+      final serviceName = booking.serviceName;
+      final timeStr = DateFormat('HH:mm • dd/MM').format(booking.startTime);
+
+      // 3. Nội dung thông báo theo từng trạng thái
+      String title = "";
+      String type = "status_update";
+
+      switch (newStatus) {
+        case 'checked_in':
+          title = "Khách đã đến tiệm";
+          type = "checked_in";
+          break;
+        case 'completed':
+          title = "Hoàn thành dịch vụ";
+          type = "completed";
+          break;
+        default:
+          title = "Cập nhật trạng thái";
+      }
+
+      // 4. Lưu thông báo vào Firestore (hiện trong tab Hoạt Động)
+      await _notiRepo.createNotification(NotificationModel(
+        shopId: booking.shopId,
+        title: title,
+        body: "$customerName • $serviceName • $timeStr",
+        type: type,
+        isRead: false,
+        createdAt: DateTime.now(),
+      ));
+
+      // 5. THÔNG BÁO NGOÀI MÀN HÌNH KHÓA NGAY LẬP TỨC
+      await NotificationService().showNotification(
+        title: title,
+        body: "$customerName • $serviceName • $timeStr",
+      );
+
+      // 6. Cập nhật UI
+      BookingController.triggerRefresh.value++;
+
+      Get.snackbar("Thành công", "Đã cập nhật trạng thái", 
+          backgroundColor: Colors.green, colorText: Colors.white);
+
+    } catch (e) {
+      Get.snackbar("Lỗi", "Không thể cập nhật", 
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
   @override
   void onClose() {
     phoneController.dispose();

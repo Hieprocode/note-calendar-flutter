@@ -1,79 +1,130 @@
+// lib/data/services/notification_service.dart
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz_data;
 import 'package:timezone/timezone.dart' as tz;
-import 'package:timezone/data/latest.dart' as tz;
 
 class NotificationService {
+  // Singleton – chỉ khởi tạo 1 lần
   static final NotificationService _instance = NotificationService._internal();
   factory NotificationService() => _instance;
   NotificationService._internal();
 
-  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin = FlutterLocalNotificationsPlugin();
+  final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
+      FlutterLocalNotificationsPlugin();
 
+  static const String _channelId = "booking_channel";
+  static const String _channelName = "Lịch hẹn";
+  static const String _channelDescription = "Thông báo lịch hẹn salon";
+
+  // KHỞI TẠO – DÙNG ĐƯỢC CẢ KHI APP TẮT
   Future<void> init() async {
-    // 1. Khởi tạo Timezone (để hẹn giờ chính xác)
-    tz.initializeTimeZones();
+    // Khởi tạo timezone (bắt buộc cho zonedSchedule)
+    tz_data.initializeTimeZones();
+    final vietnam = tz.getLocation('Asia/Ho_Chi_Minh');
+    tz.setLocalLocation(vietnam);
 
-    // 2. Cấu hình Android
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher'); // Đảm bảo icon này có trong android/app/src/main/res/drawable
+    // Cấu hình khởi tạo
+    const AndroidInitializationSettings androidInit =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // 3. Cấu hình iOS (Xin quyền luôn)
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings(
+    const DarwinInitializationSettings iosInit = DarwinInitializationSettings(
       requestAlertPermission: true,
       requestBadgePermission: true,
       requestSoundPermission: true,
     );
 
-    const InitializationSettings initializationSettings = InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
+    const InitializationSettings initSettings =
+        InitializationSettings(android: androidInit, iOS: iosInit);
+
+    await flutterLocalNotificationsPlugin.initialize(initSettings);
+
+    // Tạo channel cho Android 8.0+
+    const AndroidNotificationChannel channel = AndroidNotificationChannel(
+      _channelId,
+      _channelName,
+      description: _channelDescription,
+      importance: Importance.max,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('notification'), // không .mp3
     );
 
-    await flutterLocalNotificationsPlugin.initialize(initializationSettings);
-    
-    // 4. Xin quyền Android 13+
-    final androidImpl = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    if (androidImpl != null) {
-      await androidImpl.requestNotificationsPermission();
-    }
+    final androidPlugin = flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<
+            AndroidFlutterLocalNotificationsPlugin>();
+    await androidPlugin?.createNotificationChannel(channel);
+
+    // Xin quyền Android 13+
+    await androidPlugin?.requestNotificationsPermission();
   }
 
-  // --- HÀM HẸN GIỜ NHẮC NHỞ (QUAN TRỌNG) ---
+  // HIỂN THỊ THÔNG BÁO NGAY LẬP TỨC (khi tạo lịch mới)
+  Future<void> showNotification({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
+    const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
+      _channelId,
+      _channelName,
+      channelDescription: _channelDescription,
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      sound: RawResourceAndroidNotificationSound('notification'),
+      enableVibration: true,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    const NotificationDetails platformDetails = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        sound: 'notification.mp3',
+        presentAlert: true,
+        presentSound: true,
+        presentBadge: true,
+      ),
+    );
+
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch ~/ 1000,
+      title,
+      body,
+      platformDetails,
+      payload: payload,
+    );
+  }
+
+  // HẸN GIỜ NHẮC TRƯỚC 15 PHÚT (dự phòng – nhưng giờ ta dùng Cloud Function rồi)
   Future<void> scheduleBookingReminder({
-    required int id, // ID phải là số nguyên (ta sẽ dùng hashcode của bookingID)
+    required int id,
     required String customerName,
     required DateTime bookingTime,
   }) async {
-    // Tính thời điểm nhắc: Trước 15 phút
     final scheduledDate = bookingTime.subtract(const Duration(minutes: 15));
-
-    // Nếu thời điểm nhắc đã qua rồi thì thôi không nhắc nữa
     if (scheduledDate.isBefore(DateTime.now())) return;
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
       id,
       'Sắp có khách: $customerName',
-      'Lịch hẹn bắt đầu lúc ${bookingTime.hour}:${bookingTime.minute.toString().padLeft(2, '0')}',
+      'Lịch hẹn lúc ${bookingTime.hour.toString().padLeft(2, '0')}:${bookingTime.minute.toString().padLeft(2, '0')}',
       tz.TZDateTime.from(scheduledDate, tz.local),
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'booking_channel', // Id kênh
-          'Lịch hẹn', // Tên kênh
-          channelDescription: 'Thông báo nhắc nhở lịch hẹn',
+          _channelId,
+          _channelName,
+          channelDescription: _channelDescription,
           importance: Importance.max,
           priority: Priority.high,
           playSound: true,
+          sound: RawResourceAndroidNotificationSound('notification'),
         ),
-        iOS: DarwinNotificationDetails(),
+        iOS: DarwinNotificationDetails(sound: 'notification.mp3'),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      matchDateTimeComponents: DateTimeComponents.time,
     );
-    
-    print("--> Đã hẹn giờ nhắc nhở lúc: $scheduledDate");
   }
 
-  // Hủy nhắc nhở (Dùng khi Hủy đơn)
   Future<void> cancelNotification(int id) async {
     await flutterLocalNotificationsPlugin.cancel(id);
   }
