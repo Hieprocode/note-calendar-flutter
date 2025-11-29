@@ -180,7 +180,7 @@ class BookingController extends BaseController {
         await _bookingRepo.updateBooking(booking);
         
         // Hủy thông báo cũ trước khi đặt lại
-        await _notiService.cancel(notificationId);
+        await _notiService.cancelNotification(notificationId);
         
         // Đặt lại thông báo với thời gian mới
         await _scheduleNotification(booking, notificationId);
@@ -341,7 +341,7 @@ class BookingController extends BaseController {
     try {
       // Hủy thông báo đã đặt lịch
       final notificationId = bookingTime.millisecondsSinceEpoch ~/ 1000;
-      await _notiService.cancel(notificationId);
+      await _notiService.cancelNotification(notificationId);
       
       // Xóa booking khỏi database
       await _bookingRepo.deleteBooking(bookingId);
