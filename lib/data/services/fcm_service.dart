@@ -103,9 +103,8 @@ class FCMService {
       User? user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Lấy shopId từ Firestore
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      _shopId = userDoc.data()?['shop_id'];
+      // ✅ Dùng uid làm shopId (đúng với kiến trúc dự án)
+      _shopId = user.uid;
 
       if (_shopId != null && _shopId!.isNotEmpty) {
         // Subscribe vào topic shop này

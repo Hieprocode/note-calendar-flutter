@@ -7,7 +7,6 @@ import '../../data/repositories/service_repository.dart';
 import '../../data/repositories/booking_repository.dart';
 import '../../data/repositories/notification_repository.dart';
 import '../../data/services/notification_service.dart';
-import '../../data/services/fcm_service.dart';
 
 class InitialBinding extends Bindings {
   @override
@@ -28,8 +27,6 @@ class InitialBinding extends Bindings {
 
     Get.put(NotificationService(), permanent: true);
     
-    // ✅ Khởi tạo FCMService
-    Get.put(FCMService(), permanent: true);
-    Get.find<FCMService>().init();
+    // FCMService đã được init trong main.dart
   }
 }

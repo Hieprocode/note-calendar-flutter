@@ -100,7 +100,7 @@ class AddCustomerView extends StatelessWidget {
                       ),
                       subtitle: const Text("Sẽ hiển thị cảnh báo đỏ ở mọi nơi"),
                       value: controller.isBadGuest.value,
-                      activeColor: Colors.red,
+                      activeThumbColor: Colors.red,
                       onChanged: (val) {
                         controller.isBadGuest.value = val; // TỰ ĐỘNG REBUILD NGAY!
                       },

@@ -26,9 +26,8 @@ class NotificationController extends BaseController {
       User? user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Lấy shopId từ user document
-      final userDoc = await _firestore.collection('users').doc(user.uid).get();
-      _shopId = userDoc.data()?['shop_id'];
+      // ✅ Dùng uid làm shopId (đúng với kiến trúc dự án)
+      _shopId = user.uid;
 
       if (_shopId != null && _shopId!.isNotEmpty) {
         // Lắng nghe realtime theo shopId
@@ -71,7 +70,9 @@ class NotificationController extends BaseController {
       for (var notif in notifications.where((n) => !n.isRead).toList()) {
         await _notiRepo.markAsRead(notif.id!);
       }
-      notifications.forEach((n) => n.isRead = true);
+      for (var n in notifications) {
+        n.isRead = true;
+      }
       notifications.refresh();
       _updateUnreadCount();
     } catch (e) {

@@ -10,12 +10,12 @@ class AppSlidable extends StatelessWidget {
   final Future<void> Function(String id) onDelete;
 
   const AppSlidable({
-    Key? key,
+    super.key,
     required this.itemId,
     required this.child,
     this.onEdit,                                 // Không required
     required this.onDelete,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

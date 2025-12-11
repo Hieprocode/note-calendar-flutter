@@ -1,11 +1,12 @@
 // lib/data/repositories/booking_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import '../models/booking_model.dart';
 import '../models/notification_model.dart';
 
 class BookingRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final SupabaseClient _supabase = Supabase.instance.client;
   // Nên dùng biến này để tránh gõ sai chính tả ở nhiều chỗ
   final String _collection = 'bookings'; 
 
@@ -104,7 +105,7 @@ class BookingRepository {
     }
   }
 
-  // 📝 Gửi notification đến shop
+  // 📝 Gửi notification đến shop (qua Supabase Edge Function)
   Future<void> _sendNotificationToShop({
     required String shopId,
     required String title,
@@ -113,6 +114,7 @@ class BookingRepository {
     String? relatedBookingId,
   }) async {
     try {
+      // 1. Lưu vào Firestore (để có lịch sử)
       final notification = NotificationModel(
         shopId: shopId,
         title: title,
@@ -124,9 +126,28 @@ class BookingRepository {
       );
 
       await _firestore.collection('notifications').add(notification.toJson());
-      print("--> Notification gửi thành công");
+      print("--> Notification lưu vào Firestore thành công");
+
+      // 2. Gọi Supabase Edge Function để gửi FCM
+      final response = await _supabase.functions.invoke(
+        'send-notification',
+        body: {
+          'shopId': shopId,
+          'title': title,
+          'body': body,
+          'type': type,
+          'relatedBookingId': relatedBookingId,
+        },
+      );
+
+      if (response.status == 200) {
+        print("--> Edge Function gửi FCM thành công");
+      } else {
+        print("--> Edge Function lỗi: ${response.data}");
+      }
     } catch (e) {
       print("--> Lỗi gửi notification: $e");
+      // Không throw error để app vẫn hoạt động nếu notification fail
     }
   }
 }

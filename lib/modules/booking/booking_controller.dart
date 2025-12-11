@@ -1,12 +1,8 @@
 // lib/modules/booking/booking_controller.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import 'package:timezone/data/latest_all.dart' as tz_data;
-import 'package:timezone/timezone.dart' as tz;
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/models/customer_model.dart';

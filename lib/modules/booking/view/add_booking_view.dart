@@ -73,7 +73,7 @@ class AddBookingView extends StatelessWidget {
     
                 return DropdownButtonFormField<ServiceModel>(
                   
-                  value: controller.selectedService.value,
+                  initialValue: controller.selectedService.value,
                   hint: const Text("Chọn dịch vụ *"),
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(borderRadius: BorderRadius.all(Radius.circular(12))),
