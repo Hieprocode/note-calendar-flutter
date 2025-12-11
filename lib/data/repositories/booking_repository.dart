@@ -51,16 +51,28 @@ class BookingRepository {
           .doc(bookingId)
           .update({'status': status});
       
-      // Nếu hủy booking, gửi notification
-      if (status == 'cancelled') {
+      // Chỉ gửi notification khi completed hoặc checked_in (đã đến)
+      if (status == 'completed' || status == 'checked_in') {
         final bookingDoc = await _firestore.collection(_collection).doc(bookingId).get();
         final booking = BookingModel.fromJson(bookingDoc.data()!, bookingId);
         
+        String title;
+        String type;
+        
+        if (status == 'checked_in') {
+          title = "✅ Khách đã đến";
+          type = "booking_checked_in";
+        } else { // completed
+          title = "🎉 Đơn đã hoàn thành";
+          type = "booking_completed";
+        }
+        
         await _sendNotificationToShop(
           shopId: booking.shopId,
-          title: "❌ Đơn hàng bị hủy",
+          title: title,
           body: "${booking.customerName} - ${booking.serviceName}",
-          type: "booking_cancelled",
+          type: type,
+          relatedBookingId: bookingId,
         );
       }
     } catch (e) {
