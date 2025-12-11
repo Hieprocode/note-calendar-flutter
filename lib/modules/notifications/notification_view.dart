@@ -10,7 +10,24 @@ class NotificationView extends GetView<NotificationController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Hoạt Động Gần Đây"), centerTitle: true),
+      appBar: AppBar(
+        title: const Text("Hoạt Động Gần Đây"),
+        centerTitle: true,
+        actions: [
+          Obx(() {
+            if (controller.unreadCount.value > 0) {
+              return Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: TextButton(
+                  onPressed: () => controller.markAllAsRead(),
+                  child: const Text("Đánh dấu tất cả"),
+                ),
+              );
+            }
+            return const SizedBox();
+          }),
+        ],
+      ),
       body: Obx(() {
         if (controller.notifications.isEmpty) {
           return Center(

@@ -1,91 +1,72 @@
-// lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
-import '../data/services/notification_service.dart';
 import 'core/config/supabase_config.dart';
 import 'core/base/initial_binding.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
+import 'firebase_options.dart';
+import '../data/services/notification_service.dart';
+import '../data/services/fcm_service.dart';
 
-// BACKGROUND HANDLER – BẮT BUỘC PHẢI CÓ
+// BACKGROUND HANDLER
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  await Firebase.initializeApp();
-  await NotificationService().init(); // cần init lại khi app tắt
-  print("FCM khi app tắt: ${message.notification?.title}");
-  await NotificationService().showNotification(
-    title: message.notification?.title ?? "Sắp có khách!",
-    body: message.notification?.body ?? "",
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Khởi tạo lại Service khi chạy ngầm
+  await NotificationService().init(); 
+  
+  print("--> FCM BACKGROUND: ${message.notification?.title}");
+  if (message.notification != null) {
+    NotificationService().showNotification(
+      title: message.notification!.title ?? "Thông báo",
+      body: message.notification!.body ?? "",
+    );
+  }
 }
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 1. Notification local + Firebase
-  await NotificationService().init();
-  await Firebase.initializeApp();
+  // 1. KHỞI TẠO FIREBASE
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
-  // 2. Đăng ký background FCM
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
-  // 3. LẤY TOKEN TRƯỚC
-  final token = await FirebaseMessaging.instance.getToken();
-  print('=====================================');
-  print('FCM TOKEN CỦA BẠN:');
-  print(token);
-  print('=====================================');
-
-  // 4. XIN QUYỀN THÔNG BÁO
-  await FirebaseMessaging.instance.requestPermission();
-
-  // 5. KHỞI TẠO SUPABASE TRƯỚC KHI DÙNG Supabase.instance
+  // 2. KHỞI TẠO SUPABASE
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
 
-  // 6. LƯU TOKEN LÊN FIRESTORE SAU KHI SUPABASE ĐÃ KHỞI TẠO
-  final user = Supabase.instance.client.auth.currentUser;
-  if (user != null && token != null) {
-    await FirebaseFirestore.instance
-        .collection('shop_tokens')
-        .doc(user.id)
-        .set({'token': token, 'updatedAt': FieldValue.serverTimestamp()}, SetOptions(merge: true));
-  }
+  // 3. ĐĂNG KÝ & KHỞI TẠO LOCAL NOTIFICATION (SỬA ĐOẠN NÀY)
+  // Dùng Get.put để đăng ký vào bộ nhớ ngay lập tức
+  final notiService = Get.put(NotificationService(), permanent: true);
+  await notiService.init(); 
 
-  // 7. HIỆN TOKEN TRÊN MÀN HÌNH SAU KHI runApp() (an toàn nhất)
+  // 4. KHỞI TẠO FORMAT NGÀY GIỜ
   await initializeDateFormatting();
 
-  runApp(MyApp(token: token)); // truyền token vào app
+  // 5. ĐĂNG KÝ BACKGROUND HANDLER
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // 6. KÍCH HOẠT FCM SERVICE
+  // Bây giờ gọi Get.put(FCMService) sẽ an toàn vì NotificationService đã có rồi
+  final fcmService = Get.put(FCMService(), permanent: true);
+  await fcmService.init();
+
+  runApp(const MyApp());
 }
 
 class MyApp extends StatelessWidget {
-  final String? token;
-  const MyApp({super.key, this.token});
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // HIỆN TOKEN SAU KHI GetX ĐÃ KHỞI TẠO
-    if (token != null) {
-      Future.delayed(const Duration(milliseconds: 500), () {
-        Get.snackbar(
-          "FCM Token – Copy ngay!",
-          token!,
-          duration: const Duration(seconds: 20),
-          backgroundColor: Colors.black87,
-          colorText: Colors.white,
-          snackPosition: SnackPosition.TOP,
-        );
-      });
-    }
-
     return GetMaterialApp(
       title: 'Note Calendar',
       debugShowCheckedModeBanner: false,

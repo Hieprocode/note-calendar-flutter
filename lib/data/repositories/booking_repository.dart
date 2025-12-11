@@ -1,6 +1,8 @@
 // lib/data/repositories/booking_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import '../models/booking_model.dart';
+import '../models/notification_model.dart';
 
 class BookingRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -19,17 +21,51 @@ class BookingRepository {
             .toList());
   }
 
-  // 2. THÊM MỚI (Đã sửa tên từ addBooking -> createBooking)
-  Future<void> createBooking(BookingModel booking)  {
-    return  _firestore.collection(_collection).add(booking.toJson());
+  // 2. THÊM MỚI + GỬI NOTIFICATION
+  Future<void> createBooking(BookingModel booking) async {
+    try {
+      // Tạo booking
+      await _firestore.collection(_collection).add(booking.toJson());
+      
+      // ✅ Gửi notification ngay từ app
+      await _sendNotificationToShop(
+        shopId: booking.shopId,
+        title: "📅 Có khách mới đặt lịch!",
+        body: "${booking.customerName} - ${booking.serviceName}",
+        type: "new_booking",
+      );
+      
+      print("--> Booking tạo thành công + gửi notification");
+    } catch (e) {
+      print("--> Lỗi tạo booking: $e");
+      rethrow;
+    }
   }
 
   // 3. Cập nhật trạng thái
   Future<void> updateStatus(String bookingId, String status) async {
-    await _firestore
-        .collection(_collection)
-        .doc(bookingId)
-        .update({'status': status});
+    try {
+      await _firestore
+          .collection(_collection)
+          .doc(bookingId)
+          .update({'status': status});
+      
+      // Nếu hủy booking, gửi notification
+      if (status == 'cancelled') {
+        final bookingDoc = await _firestore.collection(_collection).doc(bookingId).get();
+        final booking = BookingModel.fromJson(bookingDoc.data()!, bookingId);
+        
+        await _sendNotificationToShop(
+          shopId: booking.shopId,
+          title: "❌ Đơn hàng bị hủy",
+          body: "${booking.customerName} - ${booking.serviceName}",
+          type: "booking_cancelled",
+        );
+      }
+    } catch (e) {
+      print("--> Lỗi cập nhật status: $e");
+      rethrow;
+    }
   }
 
   // 4. Cập nhật toàn bộ (Sửa)
@@ -56,15 +92,41 @@ class BookingRepository {
   }
 
   Future<BookingModel?> getBookingById(String id) async {
-  try {
-    final doc = await _firestore.collection('bookings').doc(id).get();
-    if (doc.exists) {
-      return BookingModel.fromJson(doc.data()!, doc.id);
+    try {
+      final doc = await _firestore.collection('bookings').doc(id).get();
+      if (doc.exists) {
+        return BookingModel.fromJson(doc.data()!, doc.id);
+      }
+      return null;
+    } catch (e) {
+      print("Lỗi lấy booking: $e");
+      return null;
     }
-    return null;
-  } catch (e) {
-    print("Lỗi lấy booking: $e");
-    return null;
   }
-}
+
+  // 📝 Gửi notification đến shop
+  Future<void> _sendNotificationToShop({
+    required String shopId,
+    required String title,
+    required String body,
+    required String type,
+    String? relatedBookingId,
+  }) async {
+    try {
+      final notification = NotificationModel(
+        shopId: shopId,
+        title: title,
+        body: body,
+        type: type,
+        relatedBookingId: relatedBookingId,
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+
+      await _firestore.collection('notifications').add(notification.toJson());
+      print("--> Notification gửi thành công");
+    } catch (e) {
+      print("--> Lỗi gửi notification: $e");
+    }
+  }
 }
