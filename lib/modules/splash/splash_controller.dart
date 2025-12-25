@@ -1,6 +1,7 @@
 import 'package:get/get.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/repositories/shop_repository.dart';
+import '../../data/services/fcm_service.dart';
 import '../../routes/app_routes.dart';
 
 class SplashController extends GetxController {
@@ -36,6 +37,14 @@ class SplashController extends GetxController {
         if (shop != null) {
           print("--> SPLASH: Đã có Shop -> Chuyển sang DASHBOARD");
           Get.offAllNamed(AppRoutes.DASHBOARD);
+          
+          // Xử lý pending notification nếu có (app mở từ notification khi đã tắt)
+          try {
+            final fcmService = Get.find<FCMService>();
+            fcmService.processPendingMessage();
+          } catch (e) {
+            print("--> SPLASH: Không tìm thấy FCMService: $e");
+          }
         } else {
           print("--> SPLASH: Chưa có Shop -> Chuyển sang SETUP_SHOP");
           Get.offAllNamed(AppRoutes.SETUP_SHOP);

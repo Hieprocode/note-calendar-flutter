@@ -4,7 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:get/get.dart';
 import '../models/notification_model.dart';
-import 'notification_service.dart';
+import '../../routes/app_routes.dart';
 
 class FCMService {
   static final FCMService _instance = FCMService._internal();
@@ -17,19 +17,12 @@ class FCMService {
 
   final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late NotificationService _localNoti;
   
   String? _shopId;
   StreamSubscription? _tokenRefreshSubscription;
+  RemoteMessage? _pendingMessage; // Lưu message khi app mở từ notification (app đã tắt)
 
   Future<void> init() async {
-    try {
-      _localNoti = Get.find<NotificationService>();
-    } catch (e) {
-      print('--> FCM: NotificationService chưa được khởi tạo');
-      return;
-    }
-
     // 1. Xin quyền thông báo
     NotificationSettings settings = await _messaging.requestPermission(
       alert: true,
@@ -123,14 +116,10 @@ class FCMService {
       print('--> FCM Foreground: ${message.notification?.title}');
       
       if (message.notification != null) {
-        // Hiển thị Local Notification
-        _localNoti.showNotification(
-          title: message.notification!.title ?? "Thông báo mới",
-          body: message.notification!.body ?? "",
-          payload: message.data['related_booking_id'] ?? '',
-        );
+        // ❌ KHÔNG show local notification nữa vì FCM đã tự động hiển thị
+        // FCM sẽ tự động show notification tray
         
-        // ✅ Lưu vào Firestore để có lịch sử
+        // ✅ CHỈ lưu vào Firestore để có lịch sử
         _saveNotificationToFirestore(message);
       }
     });
@@ -184,14 +173,31 @@ class FCMService {
 
     print("--> Tapped notification type: $type, bookingId: $relatedBookingId");
 
-    // Điều hướng dựa trên loại notification
-    if (type == 'new_booking' && relatedBookingId != null) {
-      // Mở chi tiết booking
-      Get.toNamed('/booking-detail', arguments: relatedBookingId);
-    } else if (type == 'booking_cancelled') {
-      // Refresh danh sách booking
-      // (Sẽ refresh tự động khi lắng nghe Realtime từ Firestore)
-      print('--> Booking cancelled, refresh UI tự động');
+    // Navigate đến booking detail nếu có bookingId
+    if (relatedBookingId != null && relatedBookingId.isNotEmpty) {
+      // Điều hướng đến chi tiết booking
+      Get.toNamed(AppRoutes.BOOKING_DETAIL, arguments: relatedBookingId);
+    } else {
+      // Nếu không có bookingId, mở màn hình notifications
+      Get.toNamed(AppRoutes.NOTIFICATIONS);
+    }
+  }
+
+  // 💾 Lưu pending message khi app mở từ notification (app đã tắt)
+  void setPendingMessage(RemoteMessage message) {
+    _pendingMessage = message;
+    print("--> FCM: Đã lưu pending message");
+  }
+
+  // 🚀 Xử lý pending message sau khi app đã navigate xong splash
+  void processPendingMessage() {
+    if (_pendingMessage != null) {
+      print("--> FCM: Đang xử lý pending message");
+      // Đợi 500ms để đảm bảo dashboard đã load xong
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleNotificationTap(_pendingMessage!);
+        _pendingMessage = null; // Clear sau khi xử lý
+      });
     }
   }
 

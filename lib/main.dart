@@ -4,20 +4,22 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:get_storage/get_storage.dart';
 
 import 'core/config/supabase_config.dart';
+import 'core/config/app_locale.dart';
+import 'core/translations/app_translations.dart';
 import 'core/base/initial_binding.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
 import 'firebase_options.dart';
-import '../data/services/notification_service.dart';
-import '../data/services/fcm_service.dart';
+import 'data/services/notification_service.dart';
+import 'data/services/fcm_service.dart';
 
 // BACKGROUND HANDLER
 @pragma('vm:entry-point')
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Khởi tạo lại Service khi chạy ngầm
   await NotificationService().init(); 
   
   print("--> FCM BACKGROUND: ${message.notification?.title}");
@@ -31,6 +33,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // 0. KHỞI TẠO GET STORAGE
+  await GetStorage.init();
 
   // 1. KHỞI TẠO FIREBASE
   await Firebase.initializeApp(
@@ -48,8 +53,8 @@ void main() async {
   final notiService = Get.put(NotificationService(), permanent: true);
   await notiService.init(); 
 
-  // 4. KHỞI TẠO FORMAT NGÀY GIỜ
-  await initializeDateFormatting();
+  // 4. KHỞI TẠO FORMAT NGÀY GIỜ (TIẾNG VIỆT)
+  await initializeDateFormatting('vi_VN', null);
 
   // 5. ĐĂNG KÝ BACKGROUND HANDLER
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
@@ -59,17 +64,33 @@ void main() async {
   final fcmService = Get.put(FCMService(), permanent: true);
   await fcmService.init();
 
-  runApp(const MyApp());
+  // 7. KIỂM TRA XEM APP CÓ ĐƯỢC MỞ TỪ NOTIFICATION KHÔNG (khi app đã tắt)
+  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  
+  runApp(MyApp(initialMessage: initialMessage));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final RemoteMessage? initialMessage;
+  
+  const MyApp({super.key, this.initialMessage});
 
   @override
   Widget build(BuildContext context) {
+    // Lưu initialMessage vào FCMService để xử lý sau
+    if (initialMessage != null) {
+      final fcmService = Get.find<FCMService>();
+      fcmService.setPendingMessage(initialMessage!);
+    }
+    
     return GetMaterialApp(
       title: 'Note Calendar',
       debugShowCheckedModeBanner: false,
+      locale: AppLocale.defaultLocale,
+      supportedLocales: AppLocale.supportedLocales,
+      localizationsDelegates: AppLocale.localizationsDelegates,
+      translations: AppTranslations(),
+      fallbackLocale: AppLocale.defaultLocale,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,

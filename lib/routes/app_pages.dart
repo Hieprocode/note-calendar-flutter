@@ -16,6 +16,7 @@ import '../modules/dashboard/dashboard_binding.dart';
 
 // 2. Import Module Booking (QUAN TRỌNG)
 import '../modules/booking/view/add_booking_view.dart'; // <--- Import cái này
+import '../modules/booking/view/booking_detail_page.dart';
 import '../modules/booking/booking_binding.dart';
 
 import '../modules/customers/customer_view.dart';
@@ -59,6 +60,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.ADD_BOOKING,
       page: () => const AddBookingView(), // <--- Phải gọi AddBookingView
+      binding: BookingBinding(),
+    ),
+
+    GetPage(
+      name: AppRoutes.BOOKING_DETAIL,
+      page: () => const BookingDetailPage(),
       binding: BookingBinding(),
     ),
 

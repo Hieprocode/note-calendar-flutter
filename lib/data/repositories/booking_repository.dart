@@ -104,6 +104,45 @@ class BookingRepository {
             .toList());
   }
 
+  // Kiểm tra xem service có đang được sử dụng trong booking không
+  Future<int> countBookingsByService(String shopId, String serviceId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('shop_id', isEqualTo: shopId)
+          .where('service_id', isEqualTo: serviceId)
+          .where('status', whereIn: ['confirmed', 'checked_in']) // Chỉ đếm booking chưa hoàn thành
+          .get();
+      
+      return snapshot.docs.length;
+    } catch (e) {
+      print("--> Lỗi đếm booking theo service: $e");
+      return 0;
+    }
+  }
+
+  // Xóa tất cả booking của một service
+  Future<int> deleteBookingsByService(String shopId, String serviceId) async {
+    try {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('shop_id', isEqualTo: shopId)
+          .where('service_id', isEqualTo: serviceId)
+          .get();
+      
+      final batch = _firestore.batch();
+      for (var doc in snapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      
+      await batch.commit();
+      return snapshot.docs.length;
+    } catch (e) {
+      print("--> Lỗi xóa booking theo service: $e");
+      return 0;
+    }
+  }
+
   Future<BookingModel?> getBookingById(String id) async {
     try {
       final doc = await _firestore.collection('bookings').doc(id).get();
