@@ -8,6 +8,9 @@ import '../modules/splash/splash_binding.dart';
 import '../modules/auth/auth_view.dart';
 import '../modules/auth/auth_binding.dart';
 
+import '../modules/verify_otp/verify_otp_view.dart';
+import '../modules/verify_otp/verify_otp_binding.dart';
+
 import '../modules/setup_shop/setup_shop_view.dart';
 import '../modules/setup_shop/setup_shop_binding.dart';
 
@@ -35,6 +38,11 @@ class AppPages {
       name: AppRoutes.LOGIN,
       page: () => const AuthView(),
       binding: AuthBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.VERIFY_OTP,
+      page: () => const VerifyOtpView(),
+      binding: VerifyOtpBinding(),
     ),
     GetPage(
       name: AppRoutes.SETUP_SHOP,

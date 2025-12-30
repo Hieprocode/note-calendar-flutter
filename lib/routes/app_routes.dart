@@ -1,6 +1,7 @@
 class AppRoutes {
   static const SPLASH = '/splash';
   static const LOGIN = '/login';
+  static const VERIFY_OTP = '/verify-otp';
   static const SETUP_SHOP = '/setup-shop';
   static const DASHBOARD = '/dashboard';
   static const CALENDAR = '/calendar';

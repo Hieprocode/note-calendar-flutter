@@ -12,8 +12,8 @@ class CircularServiceChart extends GetView<DashboardController> {
   Widget build(BuildContext context) {
     return Obx(() {
       final serviceStats = controller.showDay.value 
-        ? controller.topServices.value 
-        : controller.monthTopServices.value;
+        ? controller.topServices 
+        : controller.monthTopServices;
       
       final allServices = controller.allServices;
       

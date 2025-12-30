@@ -3,6 +3,7 @@ import 'package:note_calendar/data/repositories/customer_repository.dart';
 import '../../data/repositories/shop_repository.dart';
 import '../../data/repositories/auth_repository.dart';
 import '../../data/services/storage_service.dart';
+import '../../data/services/supabase_auth_service.dart';
 import '../services/locale_service.dart';
 import '../../data/repositories/service_repository.dart';
 import '../../data/repositories/booking_repository.dart';
@@ -12,6 +13,8 @@ import '../../data/services/notification_service.dart';
 class InitialBinding extends Bindings {
   @override
   void dependencies() {
+    Get.put(FirebasePhoneAuthService(), permanent: true);
+
     Get.put(AuthRepository(), permanent: true);
 
     Get.put(StorageService(), permanent: true);

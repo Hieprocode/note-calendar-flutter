@@ -27,5 +27,27 @@ class StorageService {
     }
   }
 
+  // Upload avatar khách hàng
+  Future<String> uploadCustomerAvatar(File imageFile, String userId, String customerPhone) async {
+    try {
+      final fileExt = imageFile.path.split('.').last;
+      final fileName = '$userId/customers/${customerPhone}_avatar_${DateTime.now().millisecondsSinceEpoch}.$fileExt';
+      
+      // Upload lên Bucket
+      await _supabase.storage
+          .from(SupabaseConfig.bucketName)
+          .upload(fileName, imageFile);
+
+      // Lấy link Public
+      final imageUrl = _supabase.storage
+          .from(SupabaseConfig.bucketName)
+          .getPublicUrl(fileName);
+          
+      return imageUrl;
+    } catch (e) {
+      throw Exception("Lỗi Upload avatar khách hàng: $e");
+    }
+  }
+
   Future<dynamic> init() async {}
 }

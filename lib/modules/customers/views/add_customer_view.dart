@@ -51,6 +51,61 @@ class AddCustomerView extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Avatar Picker
+                      Center(
+                        child: GestureDetector(
+                          onTap: () => controller.pickAvatar(),
+                          child: Obx(() {
+                            final hasNewImage = controller.selectedAvatar.value != null;
+                            final hasCurrentUrl = controller.currentAvatarUrl != null;
+                            
+                            return Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: Colors.blue.withOpacity(0.3),
+                                  width: 3,
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.blue.withOpacity(0.2),
+                                    blurRadius: 15,
+                                    offset: const Offset(0, 5),
+                                  ),
+                                ],
+                              ),
+                              child: ClipOval(
+                                child: hasNewImage
+                                  ? Image.file(
+                                      controller.selectedAvatar.value!,
+                                      fit: BoxFit.cover,
+                                    )
+                                  : hasCurrentUrl
+                                    ? Image.network(
+                                        controller.currentAvatarUrl!,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => _defaultAvatar(),
+                                      )
+                                    : _defaultAvatar(),
+                              ),
+                            );
+                          }),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      const Center(
+                        child: Text(
+                          "Chạm để chọn ảnh đại diện",
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+
                       // Tên khách
                       TextField(
                         controller: controller.nameController,
@@ -167,6 +222,17 @@ class AddCustomerView extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _defaultAvatar() {
+    return Container(
+      color: Colors.grey.shade200,
+      child: Icon(
+        Icons.person_add_rounded,
+        size: 50,
+        color: Colors.grey.shade400,
       ),
     );
   }

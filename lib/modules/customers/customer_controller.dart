@@ -1,14 +1,18 @@
 // lib/modules/customers/customer_controller.dart
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/Get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:image_picker/image_picker.dart';
 // import 'package:collection/collection.dart'; // THÊM DÒNG NÀY ĐỂ DÙNG firstWhereOrNull
 import '../../core/base/base_controller.dart';
 import '../../data/models/customer_model.dart';
 import '../../data/repositories/customer_repository.dart';
+import '../../data/services/storage_service.dart';
 
 class CustomerController extends BaseController {
   final CustomerRepository _customerRepo = Get.find<CustomerRepository>();
+  final StorageService _storageService = Get.find<StorageService>();
 
   // BIẾN REALTIME RIÊNG CHO CUSTOMER – ĐÃ SỬA ĐÚNG TÊN!
   final triggerRefresh = 0.obs;
@@ -22,7 +26,9 @@ class CustomerController extends BaseController {
   final noteController = TextEditingController();
   
   var isBadGuest = false.obs;
+  var selectedAvatar = Rxn<File>();
   String? editingId;
+  String? currentAvatarUrl;
 
   @override
   void onInit() {
@@ -54,6 +60,20 @@ class CustomerController extends BaseController {
     }
   }
 
+  // Chọn ảnh avatar
+  Future<void> pickAvatar() async {
+    final picker = ImagePicker();
+    final pickedFile = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 512,
+      maxHeight: 512,
+      imageQuality: 80,
+    );
+    if (pickedFile != null) {
+      selectedAvatar.value = File(pickedFile.path);
+    }
+  }
+
   void prepareForm({CustomerModel? customer}) {
     if (customer != null) {
       editingId = customer.id;
@@ -61,12 +81,16 @@ class CustomerController extends BaseController {
       phoneController.text = customer.phone;
       noteController.text = customer.note ?? "";
       isBadGuest.value = customer.isBadGuest;
+      currentAvatarUrl = customer.avatarUrl;
+      selectedAvatar.value = null;
     } else {
       editingId = null;
       nameController.clear();
       phoneController.clear();
       noteController.clear();
       isBadGuest.value = false;
+      currentAvatarUrl = null;
+      selectedAvatar.value = null;
     }
   }
 
@@ -85,6 +109,16 @@ class CustomerController extends BaseController {
       // Tìm khách cũ để lấy totalBookings
       final existingCustomer = allCustomers.firstWhereOrNull((c) => c.phone == phone);
 
+      // Upload avatar nếu có chọn ảnh mới
+      String? avatarUrl = currentAvatarUrl;
+      if (selectedAvatar.value != null) {
+        avatarUrl = await _storageService.uploadCustomerAvatar(
+          selectedAvatar.value!,
+          uid,
+          phone,
+        );
+      }
+
       final customer = CustomerModel(
         id: docId,
         shopId: uid,
@@ -94,6 +128,7 @@ class CustomerController extends BaseController {
         isBadGuest: isBadGuest.value,
         totalBookings: (existingCustomer?.totalBookings ?? 0) + (editingId == null ? 1 : 0),
         lastBookingDate: DateTime.now(),
+        avatarUrl: avatarUrl,
       );
 
       await _customerRepo.saveCustomer(customer);

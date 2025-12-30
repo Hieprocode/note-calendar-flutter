@@ -9,6 +9,7 @@ class CustomerModel {
   bool isBadGuest;   // Đánh dấu khách hay bùng kèo
   DateTime? lastBookingDate; // Ngày ghé gần nhất
   String? note; // Ghi chú riêng về khách (VD: Khách khó tính, hay tip...)
+  String? avatarUrl; // Ảnh đại diện khách hàng
 
   CustomerModel({
     required this.id,
@@ -19,6 +20,7 @@ class CustomerModel {
     this.isBadGuest = false,
     this.lastBookingDate,
     this.note,
+    this.avatarUrl,
   });
 
   factory CustomerModel.fromJson(Map<String, dynamic> json, String id) {
@@ -33,6 +35,7 @@ class CustomerModel {
           ? (json['last_booking_date'] as Timestamp).toDate() 
           : null,
       note: json['note'],
+      avatarUrl: json['avatar_url'],
     );
   }
 
@@ -47,6 +50,7 @@ class CustomerModel {
           ? Timestamp.fromDate(lastBookingDate!) 
           : null,
       'note': note,
+      'avatar_url': avatarUrl,
       'updated_at': FieldValue.serverTimestamp(),
     };
   }
