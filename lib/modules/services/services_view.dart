@@ -4,8 +4,9 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../data/models/service_model.dart';
 import 'services_controller.dart';
-import '../../core/widgets/app_slidable.dart'; // DÙNG CHUNG TOÀN APP
-    // DÙNG CHUNG TOÀN APP (nếu muốn)
+import '../../core/widgets/app_slidable.dart';
+import '../../core/config/app_colors.dart';
+import 'edit_service_view.dart';
 
 class ServicesView extends GetView<ServicesController> {
   const ServicesView({super.key});
@@ -13,118 +14,365 @@ class ServicesView extends GetView<ServicesController> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Danh sách Dịch vụ"),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      ),
-
-      floatingActionButton: FloatingActionButton.extended(
-        heroTag: "btn_add_service",
-        onPressed: () => _showServiceDialog(),
-        label: const Text("Thêm dịch vụ"),
-        icon: const Icon(Icons.add),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
-      ),
-
-      body: Obx(() {
-        final services = controller.servicesList;
-
-        if (services.isEmpty) {
-          return Center(
+      body: Stack(
+        children: [
+          // ANIMATED BACKGROUND
+          Positioned.fill(child: _buildAnimatedBackground()),
+          
+          // MAIN CONTENT
+          SafeArea(
             child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.spa_outlined, size: 80, color: Colors.grey.shade300),
-                const SizedBox(height: 20),
-                const Text("Chưa có dịch vụ nào", style: TextStyle(fontSize: 18, color: Colors.grey)),
-                const SizedBox(height: 8),
-                const Text("Bấm nút (+) để thêm dịch vụ đầu tiên", style: TextStyle(color: Colors.grey)),
+                // GLASSMORPHISM HEADER
+                _buildGlassHeader(),
+                
+                const SizedBox(height: 16),
+                
+                // SERVICE LIST
+                Expanded(child: _buildServiceList()),
               ],
             ),
-          );
-        }
+          ),
+        ],
+      ),
 
-        return ListView.builder(
-          key: const ValueKey("services_list"),
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-          itemCount: services.length,
-          itemBuilder: (context, index) {
-            final service = services[index];
-            final color = _parseColor(service.colorHex);
-            final letter = service.name.isNotEmpty ? service.name[0].toUpperCase() : "?";
+      // GLASSMORPHISM FAB
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          gradient: AppColors.primaryGradient,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.4),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          heroTag: "btn_add_service",
+          onPressed: () => _showServiceDialog(),
+          backgroundColor: AppColors.primaryLightest,
+          elevation: 0,
+          icon: const Icon(Icons.add_rounded, size: 26),
+          label: Text(
+            'add_service'.tr,
+            style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 15),
+          ),
+        ),
+      ),
+    );
+  }
 
-            return AppSlidable(
-              itemId: service.id!,
-              onEdit: () => _showServiceDialog(editingService: service),
-              onDelete: (id) async {
-                await controller.deleteService(id);
-                // Nếu muốn snackbar xanh đẹp hơn thì dùng AppAlert
-                // AppAlert.success("Đã xóa dịch vụ");
-              },
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+  // ANIMATED BACKGROUND WITH PATTERN
+  Widget _buildAnimatedBackground() {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryLightest,
+            AppColors.primaryLighter,
+            AppColors.primaryLight,
+          ],
+        ),
+      ),
+      child: Image.asset(
+        'assets/polygon-scatter-haikei (1).png',
+        fit: BoxFit.cover,
+        width: double.infinity,
+        height: double.infinity,
+        opacity: const AlwaysStoppedAnimation(0.6),
+      ),
+    );
+  }
+
+  // GLASSMORPHISM HEADER
+  Widget _buildGlassHeader() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      decoration: BoxDecoration(
+        color: AppColors.glassBackground,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.glassBorder, width: 1.5),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.white.withOpacity(0.2),
+            blurRadius: 10,
+            offset: const Offset(-5, -5),
+          ),
+          BoxShadow(
+            color: AppColors.primary.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(5, 5),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.spa_rounded, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 14),
+            Text(
+              'service_list'.tr,
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                fontSize: 22,
+                color: AppColors.primary,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const Spacer(),
+            Obx(() => Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                gradient: AppColors.primaryGradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                "${controller.servicesList.length}",
+                style: const TextStyle(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 26,
-                      backgroundColor: color.withOpacity(0.15),
-                      child: Text(
-                        letter,
-                        style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 24),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            service.name,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              Icon(Icons.access_time, size: 16, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text("${service.durationMinutes} phút", style: TextStyle(color: Colors.grey[700], fontSize: 13)),
-                              const SizedBox(width: 20),
-                              Icon(Icons.attach_money, size: 16, color: Colors.green[700]),
-                              const SizedBox(width: 4),
-                              Text(
-                                NumberFormat.currency(locale: 'vi', symbol: 'đ').format(service.price),
-                                style: const TextStyle(color: Colors.green, fontWeight: FontWeight.w600, fontSize: 14),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    Icon(Icons.arrow_back_ios_new_rounded, color: Colors.grey[400], size: 22),
-                  ],
+                  fontWeight: FontWeight.bold,
+                  fontSize: 16,
                 ),
               ),
-            );
-          },
+            )),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // SERVICE LIST
+  Widget _buildServiceList() {
+    return Obx(() {
+      final services = controller.servicesList;
+
+      if (services.isEmpty) {
+        return Center(
+          child: Container(
+            margin: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(32),
+            decoration: BoxDecoration(
+              color: AppColors.glassBackground,
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: AppColors.glassBorder, width: 1.5),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withOpacity(0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.spa_outlined,
+                    size: 48,
+                    color: AppColors.primary.withOpacity(0.5),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'no_services'.tr,
+                  style: TextStyle(
+                    color: AppColors.textPrimary,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'tap_add_first_service'.tr,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 14,
+                  ),
+                ),
+              ],
+            ),
+          ),
         );
-      }),
+      }
+
+      return ListView.separated(
+        physics: const BouncingScrollPhysics(),
+        padding: const EdgeInsets.all(16),
+        itemCount: services.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final service = services[index];
+          return _buildGlassServiceCard(service);
+        },
+      );
+    });
+  }
+
+  // GLASSMORPHISM SERVICE CARD
+  Widget _buildGlassServiceCard(ServiceModel service) {
+    final color = _parseColor(service.colorHex);
+    final letter = service.name.isNotEmpty ? service.name[0].toUpperCase() : "?";
+
+    return AppSlidable(
+      itemId: service.id!,
+      onEdit: () => _showServiceDialog(editingService: service),
+      onDelete: (id) async {
+        await controller.deleteService(id);
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.glassBackground,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: AppColors.glassBorder, width: 1.5),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.white.withOpacity(0.3),
+              blurRadius: 10,
+              offset: const Offset(-5, -5),
+            ),
+            BoxShadow(
+              color: AppColors.primary.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(5, 5),
+            ),
+          ],
+        ),
+        child: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            borderRadius: BorderRadius.circular(20),
+            onTap: () => _showServiceDialog(editingService: service),
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [color.withOpacity(0.8), color],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: color.withOpacity(0.4),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Center(
+                      child: Text(
+                        letter,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 24,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          service.name,
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.primaryLightest.withOpacity(0.3),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.primary.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.access_time, size: 14, color: AppColors.primary),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "${service.durationMinutes}'",
+                                    style: const TextStyle(
+                                      color: AppColors.primary,
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: AppColors.green.withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: AppColors.green.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.attach_money, size: 14, color: AppColors.green),
+                                  Text(
+                                    NumberFormat.currency(locale: 'vi', symbol: '').format(service.price),
+                                    style: const TextStyle(
+                                      color: AppColors.green,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: AppColors.primary.withOpacity(0.4),
+                    size: 18,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -137,130 +385,10 @@ class ServicesView extends GetView<ServicesController> {
   }
 
   void _showServiceDialog({ServiceModel? editingService}) {
-    if (editingService != null) {
-      controller.prepareEdit(editingService);
-    } else {
-      controller.resetForm();
-    }
-
-    final formKey = GlobalKey<FormState>();
-
     showDialog(
       context: Get.context!,
       barrierDismissible: false,
-      builder: (_) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text(
-          editingService == null ? "Thêm Dịch Vụ" : "Chỉnh sửa Dịch Vụ",
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        content: Form(
-          key: formKey,
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: controller.nameController,
-                  decoration: const InputDecoration(
-                    labelText: "Tên dịch vụ *",
-                    border: OutlineInputBorder(),
-                    prefixIcon: Icon(Icons.spa),
-                  ),
-                  validator: (v) => v!.trim().isEmpty ? "Nhập tên dịch vụ" : null,
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextFormField(
-                        controller: controller.priceController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: "Giá tiền *",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.attach_money),
-                          suffixText: "đ",
-                        ),
-                        validator: (v) => v!.isEmpty || double.tryParse(v) == null ? "Giá không hợp lệ" : null,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: controller.durationController,
-                        keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(
-                          labelText: "Thời gian *",
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.access_time),
-                          suffixText: "phút",
-                        ),
-                        validator: (v) => v!.isEmpty ? "Nhập phút" : null,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 20),
-                const Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text("Chọn màu hiển thị:", style: TextStyle(fontWeight: FontWeight.bold)),
-                ),
-                const SizedBox(height: 12),
-                Center(
-                  child: Wrap(
-                    spacing: 12,
-                    runSpacing: 12,
-                    children: controller.colorPalette.map((hex) {
-                      return GestureDetector(
-                        onTap: () => controller.selectedColor.value = hex,
-                        child: Obx(() {
-                          final selected = controller.selectedColor.value == hex;
-                          return Container(
-                            width: 44,
-                            height: 44,
-                            decoration: BoxDecoration(
-                              color: Color(int.parse(hex)),
-                              shape: BoxShape.circle,
-                              border: selected ? Border.all(color: Colors.black, width: 3) : null,
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.2),
-                                  blurRadius: 6,
-                                  offset: const Offset(0, 2),
-                                ),
-                              ],
-                            ),
-                            child: selected ? const Icon(Icons.check, color: Colors.white, size: 24) : null,
-                          );
-                        }),
-                      );
-                    }).toList(),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(Get.context!),
-            child: const Text("Hủy", style: TextStyle(color: Colors.grey)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              if (formKey.currentState!.validate()) {
-                controller.saveService();
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            child: Text(editingService == null ? "Thêm mới" : "Cập nhật", style: const TextStyle(color: Colors.white)),
-          ),
-        ],
-      ),
+      builder: (_) => EditServiceView(editingService: editingService),
     );
   }
 }

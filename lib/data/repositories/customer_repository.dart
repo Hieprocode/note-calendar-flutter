@@ -1,48 +1,44 @@
-// lib/data/repositories/customer_repository.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/customer_model.dart';
 
 class CustomerRepository {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  
+  // Dùng biến hằng số để tránh gõ sai chính tả 'customers' thành 'customer'
   final String _collection = 'customers';
 
-  // Tìm khách hàng bằng số điện thoại
+  // 1. TÌM KIẾM: Tìm khách lẻ bằng SĐT (Dùng khi tạo booking)
   Future<CustomerModel?> findCustomerByPhone(String phone, String shopId) async {
-    final snapshot = await _firestore
-        .collection('customers')
-        .where('shop_id', isEqualTo: shopId)
-        .where('phone', isEqualTo: phone)
-        .limit(1)
-        .get();
+    try {
+      final snapshot = await _firestore
+          .collection(_collection)
+          .where('shop_id', isEqualTo: shopId)
+          .where('phone', isEqualTo: phone)
+          .limit(1)
+          .get();
 
-    if (snapshot.docs.isNotEmpty) {
-      return CustomerModel.fromJson(snapshot.docs.first.data(), snapshot.docs.first.id);
+      if (snapshot.docs.isNotEmpty) {
+        return CustomerModel.fromJson(snapshot.docs.first.data(), snapshot.docs.first.id);
+      }
+      return null;
+    } catch (e) {
+      print("Lỗi tìm khách: $e");
+      return null;
     }
-    return null;
   }
 
-  // Tạo hồ sơ khách mới
-  Future<void> createCustomer(CustomerModel customer) async {
-    // Dùng số điện thoại làm ID luôn cho dễ tìm và tránh trùng lặp
-    await _firestore.collection('customers').doc(customer.phone).set(customer.toJson());
-  }
-
-  // Cập nhật số liệu (khi khách đặt thêm đơn)
-  Future<void> updateCustomerStats(String customerId) async {
-    await _firestore.collection('customers').doc(customerId).update({
-      'total_bookings': FieldValue.increment(1),
-      'last_booking_date': FieldValue.serverTimestamp(),
-    });
-  }
-
+  // 2. LƯU KHÁCH HÀNG (Gộp chung Tạo mới & Cập nhật thông tin)
+  // Dùng SetOptions(merge: true) là cách an toàn nhất: 
+  // - Nếu chưa có -> Tạo mới.
+  // - Nếu có rồi -> Chỉ cập nhật các trường thay đổi, giữ nguyên các trường khác (như total_bookings).
   Future<void> saveCustomer(CustomerModel customer) async {
     await _firestore.collection(_collection).doc(customer.id).set(
       customer.toJson(),
-      SetOptions(merge: true), // Merge để không mất dữ liệu cũ
+      SetOptions(merge: true),
     );
   }
 
-  // 3. Cộng dồn số lần đặt (Hàm bạn đang thiếu)
+  // 3. CẬP NHẬT SỐ LIỆU (Chạy ngầm khi booking thành công)
   Future<void> incrementBookingCount(String customerId) async {
     try {
       await _firestore.collection(_collection).doc(customerId).update({
@@ -52,5 +48,33 @@ class CustomerRepository {
     } catch (e) {
       print("Lỗi cộng dồn khách: $e");
     }
+  }
+
+Future<void> decrementBookingCount(String phone) async {
+  final docRef = _firestore
+      .collection('customers')
+      .doc(phone); // vì bạn dùng phone làm id
+
+  await docRef.update({
+    'total_bookings': FieldValue.increment(-1),
+    'last_booking_date': FieldValue.serverTimestamp(), // tùy chọn
+  });
+}
+
+  // 4. LẤY DANH SÁCH (Stream - Realtime) -> Dùng cho màn hình Quản lý Khách
+  Stream<List<CustomerModel>> getCustomersStream(String shopId) {
+    return _firestore
+        .collection(_collection)
+        .where('shop_id', isEqualTo: shopId)
+        .orderBy('last_booking_date', descending: true) // Khách mới ghé hiện lên đầu
+        .snapshots()
+        .map((snapshot) => snapshot.docs
+            .map((doc) => CustomerModel.fromJson(doc.data(), doc.id))
+            .toList());
+  }
+
+  // 5. XÓA KHÁCH HÀNG
+  Future<void> deleteCustomer(String id) async {
+    await _firestore.collection(_collection).doc(id).delete();
   }
 }
