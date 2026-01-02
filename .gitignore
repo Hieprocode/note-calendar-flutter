@@ -94,3 +94,6 @@ lib/generated_plugin_registrant.dart
 # -----------------------
 # Chặn file chứa Key API nhạy cảm (nếu sau này dùng package flutter_dotenv)
 .env*
+# Supabase Edge Functions Secrets
+supabase/.env
+supabase/.env.local

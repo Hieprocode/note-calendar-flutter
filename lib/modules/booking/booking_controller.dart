@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:intl/intl.dart';
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/models/customer_model.dart';
@@ -9,19 +10,24 @@ import '../../data/models/service_model.dart';
 import '../../data/repositories/booking_repository.dart';
 import '../../data/repositories/customer_repository.dart';
 import '../../data/repositories/service_repository.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/models/notification_model.dart';
+import '../../data/services/notification_service.dart';
 
 class BookingController extends BaseController {
   // Repos
+  final NotificationRepository _notiRepo = Get.find<NotificationRepository>();
   final BookingRepository _bookingRepo = Get.find<BookingRepository>();
   final CustomerRepository _customerRepo = Get.find<CustomerRepository>();
   final ServiceRepository _serviceRepo = Get.find<ServiceRepository>();
+  final NotificationService _notiService = Get.find<NotificationService>();
 
   // Form Inputs
   final phoneController = TextEditingController();
   final nameController = TextEditingController();
   final noteController = TextEditingController();
 
-  // State Variables (Dùng .obs để UI tự cập nhật)
+  // State Variables
   var selectedDate = DateTime.now().obs;
   var selectedTime = TimeOfDay.now().obs;
   var endTime = TimeOfDay.now().obs;
@@ -34,6 +40,7 @@ class BookingController extends BaseController {
   var paymentMethod = 'cash'.obs;
   var paymentStatus = 'unpaid'.obs;
   static final triggerRefresh = 0.obs;
+
   @override
   void onInit() {
     super.onInit();
@@ -42,10 +49,9 @@ class BookingController extends BaseController {
     // Tự động tính giờ kết thúc
     ever(selectedTime, (_) => _calculateEndTime());
     ever(selectedService, (_) => _calculateEndTime());
-
     phoneController.addListener(_onPhoneChanged);
-
-    // --- QUAN TRỌNG: LOAD DỮ LIỆU CŨ NẾU LÀ SỬA ---
+    
+    // Load dữ liệu cũ nếu là sửa
     if (Get.arguments != null && Get.arguments is BookingModel) {
       fillDataForEdit(Get.arguments as BookingModel);
     }
@@ -59,16 +65,15 @@ class BookingController extends BaseController {
 
   void resetFormForAdd() {
     isEditMode.value = false;
-
+    editingId = null;
     nameController.clear();
     phoneController.clear();
-    
+    noteController.clear();
     selectedService.value = null;
     selectedDate.value = DateTime.now();
     selectedTime.value = TimeOfDay.now();
-
-    // Nếu bạn có thêm trường nào (note, staff, v.v.) thì clear ở đây luôn
-    // noteController.clear();
+    paymentMethod.value = 'cash';
+    paymentStatus.value = 'unpaid';
   }
 
   void fillDataForEdit(BookingModel booking) {
@@ -79,15 +84,13 @@ class BookingController extends BaseController {
     phoneController.text = booking.customerPhone;
     noteController.text = booking.note ?? "";
     
-    // Cập nhật biến Rx để UI thay đổi theo
     selectedDate.value = booking.startTime;
     selectedTime.value = TimeOfDay.fromDateTime(booking.startTime);
     endTime.value = TimeOfDay.fromDateTime(booking.endTime);
     
     paymentMethod.value = booking.paymentMethod;
     paymentStatus.value = booking.paymentStatus;
-
-    // Tạo object service tạm để Dropdown nhận diện
+    
     selectedService.value = ServiceModel(
       shopId: booking.shopId,
       name: booking.serviceName,
@@ -130,86 +133,31 @@ class BookingController extends BaseController {
     return DateTime(date.year, date.month, date.day, time.hour, time.minute);
   }
 
-//   Future<void> saveBooking() async {
-//   if (nameController.text.isEmpty || selectedService.value == null) {
-//     Get.snackbar("Lỗi", "Vui lòng nhập tên và chọn dịch vụ", backgroundColor: Colors.redAccent, colorText: Colors.white);
-//     return;
-//   }
-
-//   await safeCall(() async {
-//     String uid = FirebaseAuth.instance.currentUser!.uid;
-//     final start = _getDateTime(selectedDate.value, selectedTime.value);
-//     final end = _getDateTime(selectedDate.value, endTime.value);
-
-//     BookingModel booking = BookingModel(
-//       id: editingId,
-//       shopId: uid,
-//       customerName: nameController.text,
-//       customerPhone: phoneController.text,
-//       serviceId: selectedService.value!.id!,
-//       serviceName: selectedService.value!.name,
-//       servicePrice: selectedService.value!.price,
-//       durationMinutes: selectedService.value!.durationMinutes,
-//       startTime: start,
-//       endTime: end,
-//       status: 'confirmed',
-//       source: 'manual',
-//       note: noteController.text,
-//       paymentMethod: paymentMethod.value,
-//       paymentStatus: paymentStatus.value,
-//     );
-
-//     if (isEditMode.value) {
-//       await _bookingRepo.updateBooking(booking);
-//       Get.back();
-//       Get.snackbar("Thành công", "Đã cập nhật đơn hàng", backgroundColor: Colors.green, colorText: Colors.white);
-//     } else {
-//       await _bookingRepo.createBooking(booking);
-      
-//       // Lưu khách (giữ nguyên)
-//       CustomerModel customer = CustomerModel(
-//         id: "${uid}_${phoneController.text.trim()}",
-//         shopId: uid,
-//         name: nameController.text,
-//         phone: phoneController.text,
-//         totalBookings: 1,
-//       );
-//       _customerRepo.saveCustomer(customer);
-//       _customerRepo.incrementBookingCount(customer.id);
-
-//       // Reset form
-//       nameController.clear();
-//       phoneController.clear();
-//       noteController.clear();
-//       selectedService.value = null;
-      
-//       Get.rawSnackbar(message: "Đã thêm mới thành công! Nhập tiếp nào.", backgroundColor: Colors.green);
-//     }
-
-//     // DÒNG NÀY PHẢI ĐẶT Ở NGOÀI CẢ 2 NHÁNH (if/else) – QUAN TRỌNG NHẤT!
-//     BookingController.triggerRefresh.value++;  // Cập nhật calendar dù thêm hay sửa
-//     Get.back(); // ĐÓNG BOTTOM SHEET DÙ THÊM HAY SỬA!
-//   });
-// }
-
-Future<void> saveBooking() async {
-    if (nameController.text.isEmpty || selectedService.value == null) {
-      print("Thiếu thông tin"); // Hoặc hiện snackbar báo lỗi
+  // ============================================================
+  // 🔔 HÀM LƯU BOOKING VỚI NOTIFICATION ĐÃ TỐI ƯU
+  // ============================================================
+  Future<void> saveBooking() async {
+    if (nameController.text.trim().isEmpty || selectedService.value == null) {
+      Get.snackbar("Lỗi", "Vui lòng nhập tên và chọn dịch vụ",
+          backgroundColor: Colors.redAccent, colorText: Colors.white);
       return;
     }
 
     await safeCall(() async {
-      String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+      final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
       if (uid.isEmpty) return;
 
+      final phone = phoneController.text.trim();
       final start = _getDateTime(selectedDate.value, selectedTime.value);
       final end = _getDateTime(selectedDate.value, endTime.value);
 
+      // Tạo ID notification duy nhất (dùng timestamp)
+      final notificationId = DateTime.now().millisecondsSinceEpoch % 2147483647;
       BookingModel booking = BookingModel(
         id: editingId,
         shopId: uid,
-        customerName: nameController.text,
-        customerPhone: phoneController.text,
+        customerName: nameController.text.trim(),
+        customerPhone: phone,
         serviceId: selectedService.value!.id!,
         serviceName: selectedService.value!.name,
         servicePrice: selectedService.value!.price,
@@ -218,57 +166,190 @@ Future<void> saveBooking() async {
         endTime: end,
         status: 'confirmed',
         source: 'manual',
-        note: noteController.text,
+        note: noteController.text.trim().isEmpty ? null : noteController.text.trim(),
         paymentMethod: paymentMethod.value,
         paymentStatus: paymentStatus.value,
       );
 
       if (isEditMode.value) {
-        // --- CHẾ ĐỘ SỬA ---
+        // ========== CHẾ ĐỘ SỬA ==========
         await _bookingRepo.updateBooking(booking);
         
-        // Đóng bảng TRƯỚC
-        Get.back(); 
+        // Hủy thông báo cũ trước khi đặt lại
+        await _notiService.cancelNotification(notificationId);
         
-        // Chờ 300ms cho Overlay ổn định rồi mới hiện thông báo (Fix lỗi Crash)
-        Future.delayed(const Duration(milliseconds: 300), () {
-           if (Get.context != null) { // Kiểm tra context còn sống không
-             Get.rawSnackbar(
-               message: "✅ Đã cập nhật thành công!", 
-               backgroundColor: Colors.green
-             );
-           }
-        });
+        // Đặt lại thông báo với thời gian mới
+        await _scheduleNotification(booking, notificationId);
+        
+        Get.rawSnackbar(
+          message: "Cập nhật lịch hẹn thành công!",
+          backgroundColor: Colors.blue,
+          snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+          duration: const Duration(seconds: 2),
+        );
       } else {
-        // --- CHẾ ĐỘ TẠO MỚI ---
+        // ========== CHẾ ĐỘ TẠO MỚI ==========
         await _bookingRepo.createBooking(booking);
         
-        // Lưu khách
-        CustomerModel customer = CustomerModel(
-          id: "${uid}_${phoneController.text.trim()}",
-          shopId: uid,
-          name: nameController.text,
-          phone: phoneController.text,
-          totalBookings: 1,
-        );
-        // Chạy song song cho nhanh
-        Future.wait([
-          _customerRepo.saveCustomer(customer),
-          _customerRepo.incrementBookingCount(customer.id)
-        ]);
-
-        // Reset form (để lần sau mở lên nó sạch sẽ)
-        nameController.clear();
-        phoneController.clear();
-        noteController.clear();
-        selectedService.value = null;
+        // Xử lý khách hàng (cũ/mới)
+        await _handleCustomer(uid, phone);
         
-        Get.rawSnackbar(message: "✅ Đã thêm mới thành công!", backgroundColor: Colors.green);
+        // Tạo thông báo trong app (Firebase)
+        await _createInAppNotification(uid, booking);
+        
+        // Đặt lịch nhắc nhở trước 15 phút
+        await _scheduleNotification(booking, notificationId);
+        
+        // Hiện thông báo ngay lập tức
+        await _notiService.showNotification(
+          title: "Đặt lịch thành công!",
+          body: "${nameController.text.trim()} • ${selectedService.value!.name} • ${DateFormat('HH:mm').format(start)}",
+        );
+        
+        Get.rawSnackbar(
+          message: "Đã thêm lịch hẹn!",
+          backgroundColor: Colors.green,
+          snackPosition: SnackPosition.TOP,
+          margin: const EdgeInsets.all(16),
+          borderRadius: 12,
+          duration: const Duration(seconds: 2),
+        );
+        
+        resetFormForAdd();
       }
-      BookingController.triggerRefresh.value++; 
-
-      Get.back(); 
+      // Cập nhật UI
+      BookingController.triggerRefresh.value++;
+      Get.back();
     });
+  }
+
+
+  Future<void> _scheduleNotification(BookingModel booking, int notificationId) async {
+    try {
+      await _notiService.scheduleBookingReminder(
+        id: notificationId,
+        customerName: booking.customerName,
+        bookingTime: booking.startTime,
+      );
+      print("✅ Đã đặt lịch nhắc nhở cho: ${booking.customerName} lúc ${booking.startTime}");
+    } catch (e) {
+      print("❌ Lỗi đặt lịch thông báo: $e");
+    }
+  }
+
+  Future<void> _handleCustomer(String uid, String phone) async {
+    try {
+      final existingCustomer = await _customerRepo.findCustomerByPhone(phone, uid);
+      
+      if (existingCustomer != null) {
+        // Khách cũ → tăng số lần đặt
+        await _customerRepo.incrementBookingCount(existingCustomer.id);
+      } else {
+        // Khách mới → tạo mới
+        final newCustomer = CustomerModel(
+          id: "${uid}_$phone",
+          shopId: uid,
+          name: nameController.text.trim(),
+          phone: phone,
+          totalBookings: 1,
+          isBadGuest: false,
+        );
+        await _customerRepo.saveCustomer(newCustomer);
+      }
+    } catch (e) {
+      print("❌ Lỗi xử lý khách hàng: $e");
+    }
+  }
+
+
+  Future<void> _createInAppNotification(String uid, BookingModel booking) async {
+    try {
+      NotificationModel noti = NotificationModel(
+        shopId: uid,
+        title: "Lịch hẹn mới",
+        body: "${booking.customerName} - ${booking.serviceName} lúc ${selectedTime.value.format(Get.context!)}",
+        type: "new_booking",
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+      await _notiRepo.createNotification(noti);
+    } catch (e) {
+      print("❌ Lỗi tạo thông báo trong app: $e");
+    }
+  }
+
+
+  Future<void> changeBookingStatus(String bookingId, String newStatus) async {
+    try {
+      await _bookingRepo.updateStatus(bookingId, newStatus);
+      
+      final booking = await _bookingRepo.getBookingById(bookingId);
+      if (booking == null) return;
+
+      final timeStr = DateFormat('HH:mm • dd/MM').format(booking.startTime);
+      
+      String title = "";
+      String type = "status_update";
+      
+      switch (newStatus) {
+        case 'checked_in':
+          title = "Khách đã đến tiệm";
+          type = "checked_in";
+          break;
+        case 'completed':
+          title = "Hoàn thành dịch vụ";
+          type = "completed";
+          break;
+        default:
+          title = "Cập nhật trạng thái";
+      }
+
+      // Lưu thông báo vào Firebase
+      await _notiRepo.createNotification(NotificationModel(
+        shopId: booking.shopId,
+        title: title,
+        body: "${booking.customerName} • ${booking.serviceName} • $timeStr",
+        type: type,
+        isRead: false,
+        createdAt: DateTime.now(),
+      ));
+
+      // Hiện thông báo ngay lập tức
+      await _notiService.showNotification(
+        title: title,
+        body: "${booking.customerName} • ${booking.serviceName} • $timeStr",
+      );
+
+      BookingController.triggerRefresh.value++;
+      
+      Get.snackbar("Thành công", "Đã cập nhật trạng thái", 
+          backgroundColor: Colors.green, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar("Lỗi", "Không thể cập nhật", 
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
+  }
+
+
+  Future<void> deleteBooking(String bookingId, DateTime bookingTime) async {
+    try {
+      // Hủy thông báo đã đặt lịch
+      final notificationId = bookingTime.millisecondsSinceEpoch ~/ 1000;
+      await _notiService.cancelNotification(notificationId);
+      
+      // Xóa booking khỏi database
+      await _bookingRepo.deleteBooking(bookingId);
+      
+      BookingController.triggerRefresh.value++;
+      
+      Get.snackbar("Thành công", "Đã xóa lịch hẹn", 
+          backgroundColor: Colors.orange, colorText: Colors.white);
+    } catch (e) {
+      Get.snackbar("Lỗi", "Không thể xóa", 
+          backgroundColor: Colors.red, colorText: Colors.white);
+    }
   }
 
   @override

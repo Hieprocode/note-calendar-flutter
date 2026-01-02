@@ -1,14 +1,18 @@
 import 'package:get/get.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:note_calendar/data/repositories/customer_repository.dart';
 import 'dart:async';
 import '../../core/base/base_controller.dart';
 import '../../data/models/booking_model.dart';
 import '../../data/repositories/booking_repository.dart';
 import '../booking/booking_controller.dart';
+import '../../data/repositories/notification_repository.dart';
+import '../../data/models/notification_model.dart';
 
 class CalendarController extends BaseController {
   final BookingRepository _bookingRepo = Get.find<BookingRepository>();
-
+  final NotificationRepository _notiRepo = Get.find<NotificationRepository>();
   var allBookings = <BookingModel>[].obs;
   StreamSubscription? _bookingSubscription;
 
@@ -86,15 +90,66 @@ class CalendarController extends BaseController {
   }
   
   // Logic đổi trạng thái nhanh
-  Future<void> updateStatus(String id, String status) async {
-    await _bookingRepo.updateStatus(id, status);
-    if (Get.isBottomSheetOpen == true) Get.back();
+ Future<void> updateStatus(String id, String status) async {
+    try {
+      await _bookingRepo.updateStatus(id, status);
+      
+      // ---> THÊM ĐOẠN NÀY: Ghi log thông báo
+      String uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+      // Tìm booking hiện tại để lấy tên khách
+      var booking = allBookings.firstWhereOrNull((b) => b.id == id);
+      String clientName = booking?.customerName ?? "Khách hàng";
+
+      NotificationModel noti = NotificationModel(
+        shopId: uid,
+        title: "Cập nhật trạng thái",
+        body: "Đơn của $clientName đã: $status",
+        type: status == 'cancelled' ? 'cancel_booking' : 'completed',
+        isRead: false,
+        createdAt: DateTime.now(),
+      );
+      _notiRepo.createNotification(noti);
+
+      if (Get.isBottomSheetOpen == true) Get.back();
+    } catch (e) {
+      print("Lỗi update: $e");
+    }
   }
   
-  // Logic xóa nhanh
   Future<void> deleteBooking(String id) async {
+  try {
+    // 1. LẤY BOOKING TRƯỚC KHI XÓA ĐỂ LẤY SỐ ĐIỆN THOẠI KHÁCH
+    final bookingSnapshot = await _bookingRepo.getBookingById(id);
+    if (bookingSnapshot == null) {
+      Get.snackbar("Lỗi", "Không tìm thấy lịch hẹn");
+      return;
+    }
+
+    final customerPhone = bookingSnapshot.customerPhone;
+
+    // 2. XÓA BOOKING TRÊN FIRESTORE
     await _bookingRepo.deleteBooking(id);
-    if (Get.isBottomSheetOpen == true) Get.back();
+
+    // 3. GIẢM totalBookings CỦA KHÁCH (QUAN TRỌNG NHẤT!)
+    if (customerPhone.isNotEmpty) {
+      await Get.find<CustomerRepository>().decrementBookingCount(customerPhone);
+    }
+    // 4. REALTIME TOÀN APP
     BookingController.triggerRefresh.value++;
+
+    // 5. ĐÓNG BOTTOM SHEET + THÔNG BÁO
+    if (Get.isBottomSheetOpen == true) Get.back();
+
+    Get.rawSnackbar(
+      message: "Đã xóa lịch hẹn thành công!",
+      backgroundColor: Colors.red,
+      snackPosition: SnackPosition.TOP,
+      margin:  EdgeInsets.all(16),
+      borderRadius: 12,
+      duration: const Duration(seconds: 2),
+    );
+  } catch (e) {
+    Get.snackbar("Lỗi", "Không thể xóa lịch hẹn", backgroundColor: Colors.red);
   }
+}
 }

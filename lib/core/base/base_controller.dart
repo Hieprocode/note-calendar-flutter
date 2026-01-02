@@ -1,5 +1,5 @@
 import 'package:get/get.dart';
-import 'package:flutter/material.dart';
+import '../widgets/custom_dialog.dart';
 
 class BaseController extends GetxController {
   // Chỉ dùng biến này để kiểm soát trạng thái
@@ -9,34 +9,34 @@ class BaseController extends GetxController {
   void showLoading() => isLoading.value = true;
   void hideLoading() => isLoading.value = false;
 
-  // Chỉ dùng để set lỗi, View sẽ tự hiện
+  // Hiển thị lỗi cho người dùng bằng Dialog
   void handleError(dynamic error) {
     hideLoading();
-    errorMessage.value = error.toString();
-    print("Lỗi System: $error");
+    String errorMsg = error.toString();
+    errorMessage.value = errorMsg;
     
-    // Dùng rawSnackbar để an toàn hơn
-    if (Get.context != null) {
-      Get.rawSnackbar(message: "Lỗi: $error");
-    }
+    print("❌ [Error] $errorMsg");
+    
+    // Hiển thị popup lỗi, tự động đóng sau 3s
+    CustomDialog.showError(errorMsg);
   }
 
-void showSuccess(String msg) {
+  void showSuccess(String msg) {
     hideLoading();
-    if (Get.context != null) {
-      Get.rawSnackbar(
-        title: "Thành công",
-        message: msg,
-        backgroundColor: Colors.green,
-        icon: const Icon(Icons.check_circle, color: Colors.white),
-        snackPosition: SnackPosition.BOTTOM,
-        borderRadius: 10,
-        margin: const EdgeInsets.all(10),
-      );
-    }
+    CustomDialog.showSuccess(msg);
+  }
+  
+  void showWarning(String msg) {
+    hideLoading();
+    CustomDialog.showWarning(msg);
+  }
+  
+  void showInfo(String msg) {
+    hideLoading();
+    CustomDialog.showInfo(msg);
   }
 
-void showError(String message) {
+  void showError(String message) {
     handleError(message);
   }
 
@@ -49,7 +49,5 @@ void showError(String message) {
       handleError(e);
     }
   }
-
-  
 }
 

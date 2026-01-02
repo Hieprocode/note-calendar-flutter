@@ -1,61 +1,103 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:get_storage/get_storage.dart';
 
-// Import các file cấu hình và route
 import 'core/config/supabase_config.dart';
+import 'core/config/app_locale.dart';
+import 'core/translations/app_translations.dart';
 import 'core/base/initial_binding.dart';
 import 'routes/app_pages.dart';
 import 'routes/app_routes.dart';
+import 'firebase_options.dart';
+import 'data/services/notification_service.dart';
+import 'data/services/fcm_service.dart';
+
+// BACKGROUND HANDLER
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  await NotificationService().init(); 
+  
+  print("--> FCM BACKGROUND: ${message.notification?.title}");
+  if (message.notification != null) {
+    NotificationService().showNotification(
+      title: message.notification!.title ?? "Thông báo",
+      body: message.notification!.body ?? "",
+    );
+  }
+}
 
 void main() async {
-  // 1. Đảm bảo Flutter Binding được khởi tạo trước
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Khởi tạo Firebase
-  // (Nó sẽ tự đọc file google-services.json mà chúng ta đã cấu hình cực khổ lúc đầu)
-  await Firebase.initializeApp();
+  // 0. KHỞI TẠO GET STORAGE
+  await GetStorage.init();
 
-  // 3. Khởi tạo Supabase
-  // (Lấy thông tin từ file Config cho gọn code)
+  // 1. KHỞI TẠO FIREBASE
+  await Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
+
+  // 2. KHỞI TẠO SUPABASE
   await Supabase.initialize(
     url: SupabaseConfig.url,
     anonKey: SupabaseConfig.anonKey,
   );
 
-  await initializeDateFormatting();
-  // 4. Chạy App
-  runApp(const MyApp());
+  // 3. ĐĂNG KÝ & KHỞI TẠO LOCAL NOTIFICATION (SỬA ĐOẠN NÀY)
+  // Dùng Get.put để đăng ký vào bộ nhớ ngay lập tức
+  final notiService = Get.put(NotificationService(), permanent: true);
+  await notiService.init(); 
+
+  // 4. KHỞI TẠO FORMAT NGÀY GIỜ (TIẾNG VIỆT)
+  await initializeDateFormatting('vi_VN', null);
+
+  // 5. ĐĂNG KÝ BACKGROUND HANDLER
+  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+
+  // 6. KÍCH HOẠT FCM SERVICE
+  // Bây giờ gọi Get.put(FCMService) sẽ an toàn vì NotificationService đã có rồi
+  final fcmService = Get.put(FCMService(), permanent: true);
+  await fcmService.init();
+
+  // 7. KIỂM TRA XEM APP CÓ ĐƯỢC MỞ TỪ NOTIFICATION KHÔNG (khi app đã tắt)
+  RemoteMessage? initialMessage = await FirebaseMessaging.instance.getInitialMessage();
+  
+  runApp(MyApp(initialMessage: initialMessage));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final RemoteMessage? initialMessage;
+  
+  const MyApp({super.key, this.initialMessage});
 
   @override
   Widget build(BuildContext context) {
+    // Lưu initialMessage vào FCMService để xử lý sau
+    if (initialMessage != null) {
+      final fcmService = Get.find<FCMService>();
+      fcmService.setPendingMessage(initialMessage!);
+    }
+    
     return GetMaterialApp(
       title: 'Note Calendar',
       debugShowCheckedModeBanner: false,
-      
-      // --- Cấu hình Theme (Màu sắc chủ đạo) ---
+      locale: AppLocale.defaultLocale,
+      supportedLocales: AppLocale.supportedLocales,
+      localizationsDelegates: AppLocale.localizationsDelegates,
+      translations: AppTranslations(),
+      fallbackLocale: AppLocale.defaultLocale,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
         useMaterial3: true,
-        // Font chữ mặc định (cần cài google_fonts ở pubspec.yaml trước)
-        // fontFamily: GoogleFonts.inter().fontFamily, 
       ),
       initialBinding: InitialBinding(),
-      // --- Cấu hình Route (Quan trọng nhất) ---
-      // Màn hình đầu tiên khi mở app
-      initialRoute: AppRoutes.SPLASH, 
-      
-      // Danh sách tất cả màn hình đã định nghĩa bên AppPages
+      initialRoute: AppRoutes.SPLASH,
       getPages: AppPages.pages,
-      
-      // (Tùy chọn) Binding khởi tạo các Controller dùng chung (như AuthController)
-      // initialBinding: InitialBinding(), 
     );
   }
 }

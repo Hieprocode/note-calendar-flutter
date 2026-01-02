@@ -5,9 +5,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../../core/base/base_controller.dart';
 import '../../data/models/service_model.dart';
 import '../../data/repositories/service_repository.dart';
+import '../../data/repositories/booking_repository.dart';
 
 class ServicesController extends BaseController {
   final ServiceRepository _serviceRepo = Get.find<ServiceRepository>();
+  final BookingRepository _bookingRepo = Get.find<BookingRepository>();
 
   // Danh sách dịch vụ realtime
   var servicesList = <ServiceModel>[].obs;
@@ -78,7 +80,12 @@ class ServicesController extends BaseController {
   FocusManager.instance.primaryFocus?.unfocus();
 
   await safeCall(() async {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      showError("Vui lòng đăng nhập lại");
+      return;
+    }
+    final uid = user.uid;
 
     final service = ServiceModel(
       id: _editingService?.id,
@@ -102,12 +109,161 @@ class ServicesController extends BaseController {
   });
 }
 
-  // === XÓA DỊCH VỤ ===
-  Future<void> deleteService(String id) async {
+  Future<void> deleteService(String id, {bool forceDelete = false}) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? "";
+    if (uid.isEmpty) return;
+
+    // Kiểm tra số lượng booking đang sử dụng service này
+    final bookingCount = await _bookingRepo.countBookingsByService(uid, id);
+
+    if (bookingCount > 0 && !forceDelete) {
+      // Hiển thị dialog cảnh báo
+      _showDeleteWarningDialog(id, bookingCount);
+      return;
+    }
+
+    // Xóa service (và booking nếu forceDelete = true)
     await safeCall(() async {
+      if (forceDelete && bookingCount > 0) {
+        // Xóa tất cả booking liên quan
+        final deletedCount = await _bookingRepo.deleteBookingsByService(uid, id);
+        print("Đã xóa $deletedCount booking");
+      }
+
+      // Xóa service
       await _serviceRepo.deleteService(id);
-      showSuccess("Đã xóa dịch vụ");
+      
+      if (forceDelete && bookingCount > 0) {
+        showSuccess("Đã xóa dịch vụ và $bookingCount lịch hẹn");
+      } else {
+        showSuccess("Đã xóa dịch vụ");
+      }
     });
+  }
+
+  void _showDeleteWarningDialog(String serviceId, int bookingCount) {
+    final service = servicesList.firstWhere((s) => s.id == serviceId);
+    
+    Get.dialog(
+      AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.warning_rounded,
+                color: Colors.orange,
+                size: 28,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                "Cảnh báo!",
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "Dịch vụ \"${service.name}\" đang được sử dụng trong:",
+              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.orange.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.orange.withOpacity(0.3)),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.event_note, color: Colors.orange, size: 24),
+                  const SizedBox(width: 12),
+                  Text(
+                    "$bookingCount lịch hẹn",
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.orange,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              "Bạn có muốn:",
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              "• Xóa dịch vụ và TẤT CẢ lịch hẹn liên quan",
+              style: TextStyle(fontSize: 13, color: Colors.red),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              "• Hoặc hủy bỏ thao tác xóa",
+              style: TextStyle(fontSize: 13),
+            ),
+          ],
+        ),
+        actions: [
+          OutlinedButton(
+            onPressed: () => Navigator.of(Get.context!).pop(),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              side: BorderSide(color: Colors.grey.shade400),
+            ),
+            child: const Text(
+              "Hủy bỏ",
+              style: TextStyle(
+                color: Colors.grey,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(Get.context!).pop(); // Đóng dialog
+              deleteService(serviceId, forceDelete: true); // Xóa tất cả
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              elevation: 0,
+            ),
+            child: const Text(
+              "Xóa tất cả",
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+      barrierDismissible: false,
+    );
   }
 
   @override
