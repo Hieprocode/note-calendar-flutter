@@ -153,6 +153,81 @@ class AuthRepository {
     }
   }
 
+  /// 1E. Đồng bộ Google User sang Firestore
+  Future<void> _syncGoogleUserToFirestore(
+    firebase_auth.User firebaseUser,
+  ) async {
+    try {
+      final uid = firebaseUser.uid;
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+
+      if (!userDoc.exists) {
+        // Tạo user mới
+        print('📝 [AuthRepo] Tạo Google user mới trong Firestore');
+        await _firestore.collection('users').doc(uid).set({
+          'email': firebaseUser.email ?? '',
+          'fullName': firebaseUser.displayName ?? firebaseUser.email ?? 'User',
+          'phone': firebaseUser.phoneNumber ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'authProvider': 'google',
+          'emailVerified': true, // Google đã verify
+        });
+
+        // Tự động tạo shop mặc định
+        await _createDefaultShop(uid, firebaseUser.email ?? 'user@gmail.com');
+      } else {
+        // Cập nhật thông tin
+        print('🔄 [AuthRepo] Cập nhật Google user trong Firestore');
+        await _firestore.collection('users').doc(uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+          'authProvider': 'google', // Đảm bảo có authProvider
+        });
+      }
+    } catch (e) {
+      print('❌ [AuthRepo] Lỗi sync Google user: $e');
+      // Không throw để không block login flow
+    }
+  }
+
+  /// 1F. Đồng bộ Facebook User sang Firestore
+  Future<void> _syncFacebookUserToFirestore(
+    firebase_auth.User firebaseUser,
+  ) async {
+    try {
+      final uid = firebaseUser.uid;
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+
+      if (!userDoc.exists) {
+        // Tạo user mới
+        print('📝 [AuthRepo] Tạo Facebook user mới trong Firestore');
+        await _firestore.collection('users').doc(uid).set({
+          'email': firebaseUser.email ?? '',
+          'fullName': firebaseUser.displayName ?? firebaseUser.email ?? 'User',
+          'phone': firebaseUser.phoneNumber ?? '',
+          'createdAt': FieldValue.serverTimestamp(),
+          'authProvider': 'facebook',
+          'emailVerified': true, // Facebook đã verify
+        });
+
+        // Tự động tạo shop mặc định
+        await _createDefaultShop(
+          uid,
+          firebaseUser.email ?? 'user@facebook.com',
+        );
+      } else {
+        // Cập nhật thông tin
+        print('🔄 [AuthRepo] Cập nhật Facebook user trong Firestore');
+        await _firestore.collection('users').doc(uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+          'authProvider': 'facebook', // Đảm bảo có authProvider
+        });
+      }
+    } catch (e) {
+      print('❌ [AuthRepo] Lỗi sync Facebook user: $e');
+      // Không throw để không block login flow
+    }
+  }
+
   // ========== FIREBASE EMAIL/PASSWORD (GIỮ LẠI) ==========
 
   // 1. Đăng ký tài khoản mới - TRỰC TIẾP (BỎ OTP)
@@ -241,6 +316,17 @@ class AuthRepository {
 
       String uid = userCredential.user!.uid;
       print('✅ [AuthRepo] Đăng nhập thành công - UID: $uid');
+
+      // Cập nhật lastLogin và đảm bảo có authProvider
+      try {
+        await _firestore.collection('users').doc(uid).update({
+          'lastLogin': FieldValue.serverTimestamp(),
+          'authProvider': 'email', // Đảm bảo có authProvider
+        });
+      } catch (e) {
+        print('⚠️ [AuthRepo] Không thể cập nhật lastLogin: $e');
+        // Không throw, vẫn cho login thành công
+      }
 
       // Kiểm tra đã có shop chưa
       DocumentSnapshot shopDoc = await _firestore
@@ -475,9 +561,13 @@ class AuthRepository {
       UserCredential userCredential = await _auth.signInWithCredential(
         credential,
       );
-      String uid = userCredential.user!.uid;
+      final user = userCredential.user!;
+      String uid = user.uid;
 
       print('✅ [AuthRepo] Google Sign In thành công - UID: $uid');
+
+      // Đồng bộ user sang Firestore
+      await _syncGoogleUserToFirestore(user);
 
       // Kiểm tra đã có shop chưa
       DocumentSnapshot shopDoc = await _firestore
@@ -516,9 +606,13 @@ class AuthRepository {
         UserCredential userCredential = await _auth.signInWithCredential(
           credential,
         );
-        String uid = userCredential.user!.uid;
+        final user = userCredential.user!;
+        String uid = user.uid;
 
         print('✅ [AuthRepo] Facebook Sign In thành công - UID: $uid');
+
+        // Đồng bộ user sang Firestore
+        await _syncFacebookUserToFirestore(user);
 
         // Kiểm tra đã có shop chưa
         DocumentSnapshot shopDoc = await _firestore

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -41,6 +42,27 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // ✅ ĐỢI Firebase Auth sẵn sàng (quan trọng cho cold start)
+  print("🔐 [Main] Waiting for Firebase Auth initialization...");
+  await Future.delayed(const Duration(milliseconds: 100));
+  
+  final currentUser = FirebaseAuth.instance.currentUser;
+  if (currentUser != null) {
+    print("✅ [Main] User already logged in: ${currentUser.email}");
+  } else {
+    print("⚠️ [Main] No user logged in");
+  }
+
+  // DEBUG: Listen to auth state changes
+  print("🔍 [Main] Setting up auth state listener...");
+  FirebaseAuth.instance.authStateChanges().listen((user) {
+    if (user == null) {
+      print('⚠️ [Main] Auth state changed: User is signed out');
+    } else {
+      print('✅ [Main] Auth state changed: User signed in - ${user.email} (${user.uid})');
+    }
+  });
 
   // 2. KHỞI TẠO SUPABASE
   await Supabase.initialize(
